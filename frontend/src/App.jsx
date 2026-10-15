@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { api, apiFileObjectUrl, clearToken, downloadApiFile, getToken, openApiFile, saveToken } from './api'
+import { api, apiFileObjectUrl, clearToken, downloadApiFile, getToken, getUser, openApiFile, saveToken, saveUser } from './api'
 import './App.css'
 
 const localNow = new Date()
@@ -30,6 +30,7 @@ function Login() {
     try {
       const result = await api('/auth/login', { method: 'POST', body })
       saveToken(result.token)
+      saveUser(result.user)
       navigate(result.user.role === 'teacher' ? '/teacher_dashboard.php' : '/dashboard.php')
     } catch (failure) {
       if (failure.status === 403) setError(failure.message)
@@ -92,9 +93,17 @@ function Registration() {
 }
 
 function Protected({ children }) {
-  const [checked, setChecked] = useState(false)
-  const [user, setUser] = useState(null)
-  useEffect(() => { if (getToken()) api('/auth/me').then(({ user: current }) => setUser(current)).catch(() => clearToken()).finally(() => setChecked(true)); else setChecked(true) }, [])
+  const hasToken = Boolean(getToken())
+  const cachedUser = hasToken ? getUser() : null
+  const [checked, setChecked] = useState(Boolean(cachedUser))
+  const [user, setUser] = useState(cachedUser)
+  useEffect(() => {
+    if (!getToken()) { setChecked(true); return }
+    api('/auth/me')
+      .then(({ user: current }) => { saveUser(current); setUser(current) })
+      .catch(() => { clearToken(); setUser(null) })
+      .finally(() => setChecked(true))
+  }, [])
   if (!checked) return null
   return user ? children(user) : <Navigate to="/index.php" replace />
 }

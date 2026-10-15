@@ -1,8 +1,23 @@
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '')).replace(/\/$/, '')
 
 export const getToken = () => sessionStorage.getItem('subaybay_api_token')
+const USER_KEY = 'subaybay_api_user'
+
+export const getUser = () => {
+  try {
+    const user = JSON.parse(sessionStorage.getItem(USER_KEY) || 'null')
+    return user && typeof user === 'object' ? user : null
+  } catch {
+    return null
+  }
+}
+
+export const saveUser = (user) => sessionStorage.setItem(USER_KEY, JSON.stringify(user))
 export const saveToken = (token) => sessionStorage.setItem('subaybay_api_token', token)
-export const clearToken = () => sessionStorage.removeItem('subaybay_api_token')
+export const clearToken = () => {
+  sessionStorage.removeItem('subaybay_api_token')
+  sessionStorage.removeItem(USER_KEY)
+}
 
 export async function api(path, { method = 'GET', body, headers = {} } = {}) {
   if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
