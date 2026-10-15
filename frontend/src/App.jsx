@@ -266,10 +266,16 @@ function FeaturePage({ kind, user }) {
   const [notice, setNotice] = useState('')
   const isAdmin = user.role === 'principal' || user.role === 'coordinator'
   async function load() {
-    const data = await api(config.endpoint)
+    const needsStudents = config.fields?.some((field) => field[2] === 'student')
+    const needsTeachers = kind === 'sessions' && isAdmin
+    const [data, studentResult, teacherResult] = await Promise.all([
+      api(config.endpoint),
+      needsStudents ? api('/students') : Promise.resolve(null),
+      needsTeachers ? api('/teachers') : Promise.resolve(null),
+    ])
     setResult(data)
-    if (config.fields?.some((field) => field[2] === 'student')) setStudents((await api('/students')).data)
-    if (kind === 'sessions' && isAdmin) setTeachers((await api('/teachers')).teachers || [])
+    if (studentResult) setStudents(studentResult.data || [])
+    if (teacherResult) setTeachers(teacherResult.teachers || [])
   }
   useEffect(() => { load().catch((failure) => setError(failure.message)) }, [kind])
   const rows = (config.rows(result || {})).filter((row) => JSON.stringify(row).toLowerCase().includes(search.toLowerCase()) && (kind !== 'endorsements' || statusFilter === 'All' || row.status === statusFilter) && (kind !== 'materials' || ((materialFilters.grade === 'All Grades' || row.grade_level === materialFilters.grade) && (!materialFilters.language || row.language === materialFilters.language) && (!materialFilters.part || row.alignment_part === materialFilters.part) && (materialFilters.profile === 'All Profiles' || row.reading_level === materialFilters.profile))))
