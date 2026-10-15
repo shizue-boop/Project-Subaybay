@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { api, apiFileObjectUrl, clearToken, downloadApiFile, getToken, getUser, openApiFile, saveToken, saveUser } from './api'
+import { api, apiFileObjectUrl, clearToken, downloadApiFile, getToken, getUser, isUserCacheFresh, openApiFile, saveToken, saveUser } from './api'
 import './App.css'
 
 const localNow = new Date()
@@ -99,6 +99,7 @@ function Protected({ children }) {
   const [user, setUser] = useState(cachedUser)
   useEffect(() => {
     if (!getToken()) { setChecked(true); return }
+    if (cachedUser && isUserCacheFresh()) return
     api('/auth/me')
       .then(({ user: current }) => { saveUser(current); setUser(current) })
       .catch(() => { clearToken(); setUser(null) })

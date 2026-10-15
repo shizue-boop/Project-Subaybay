@@ -2,6 +2,7 @@ const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'ht
 
 export const getToken = () => sessionStorage.getItem('subaybay_api_token')
 const USER_KEY = 'subaybay_api_user'
+const USER_CACHE_AT_KEY = 'subaybay_api_user_cached_at'
 
 export const getUser = () => {
   try {
@@ -12,11 +13,20 @@ export const getUser = () => {
   }
 }
 
-export const saveUser = (user) => sessionStorage.setItem(USER_KEY, JSON.stringify(user))
+export const isUserCacheFresh = () => {
+  const cachedAt = Number(sessionStorage.getItem(USER_CACHE_AT_KEY) || 0)
+  return cachedAt > 0 && Date.now() - cachedAt < 5 * 60 * 1000
+}
+
+export const saveUser = (user) => {
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user))
+  sessionStorage.setItem(USER_CACHE_AT_KEY, String(Date.now()))
+}
 export const saveToken = (token) => sessionStorage.setItem('subaybay_api_token', token)
 export const clearToken = () => {
   sessionStorage.removeItem('subaybay_api_token')
   sessionStorage.removeItem(USER_KEY)
+  sessionStorage.removeItem(USER_CACHE_AT_KEY)
 }
 
 export async function api(path, { method = 'GET', body, headers = {} } = {}) {
@@ -32,6 +42,10 @@ export async function api(path, { method = 'GET', body, headers = {} } = {}) {
   const response = await fetch(`${baseUrl}${path}`, { method, headers: requestHeaders, body: payload })
   const result = await response.json().catch(() => ({}))
   if (!response.ok) {
+    if (response.status === 401) {
+      clearToken()
+      if (!['/', '/index.php'].includes(window.location.pathname)) window.location.replace('/index.php')
+    }
     const error = new Error(result.message || 'Request could not be completed.')
     error.status = response.status
     error.errors = result.errors
