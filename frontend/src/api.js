@@ -1,0 +1,71 @@
+const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '')).replace(/\/$/, '')
+
+export const getToken = () => sessionStorage.getItem('subaybay_api_token')
+export const saveToken = (token) => sessionStorage.setItem('subaybay_api_token', token)
+export const clearToken = () => sessionStorage.removeItem('subaybay_api_token')
+
+export async function api(path, { method = 'GET', body, headers = {} } = {}) {
+  if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
+  const requestHeaders = { Accept: 'application/json', ...headers }
+  const token = getToken()
+  if (token) requestHeaders.Authorization = `Bearer ${token}`
+  let payload = body
+  if (body && !(body instanceof FormData)) {
+    requestHeaders['Content-Type'] = 'application/json'
+    payload = JSON.stringify(body)
+  }
+  const response = await fetch(`${baseUrl}${path}`, { method, headers: requestHeaders, body: payload })
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const error = new Error(result.message || 'Request could not be completed.')
+    error.status = response.status
+    error.errors = result.errors
+    throw error
+  }
+  return result
+}
+
+export async function openApiFile(path) {
+  if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${baseUrl}${path}`, { headers })
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}))
+    throw new Error(result.message || 'File could not be opened.')
+  }
+  const objectUrl = URL.createObjectURL(await response.blob())
+  window.open(objectUrl, '_blank', 'noopener')
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
+}
+
+export async function apiFileObjectUrl(path) {
+  if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${baseUrl}${path}`, { headers })
+  if (!response.ok) throw new Error('File could not be opened.')
+  return URL.createObjectURL(await response.blob())
+}
+
+export async function downloadApiFile(path, filename) {
+  if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${baseUrl}${path}`, { headers })
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}))
+    throw new Error(result.message || 'File could not be downloaded.')
+  }
+  const objectUrl = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
+}
