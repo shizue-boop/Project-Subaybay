@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { api, apiFileObjectUrl, clearToken, downloadApiFile, getToken, getUser, isUserCacheFresh, openApiFile, saveToken, saveUser } from './api'
 import './App.css'
 
@@ -111,13 +111,22 @@ function Protected({ children }) {
 
 function Shell({ user, children }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
   const links = user.role === 'teacher' ? teacherLinks : adminLinks
   async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} clearToken(); navigate('/index.php') }
   const initials = (user.full_name || 'User').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
-  return <div className="app-container"><aside className="sidebar"><div className="sidebar-header"><div className="logo-icon"><i className="fa-solid fa-book-open-reader" /></div><div className="logo-text"><h1>Project<br />Subaybay</h1><span>Reading Monitoring</span></div></div>
-    <div className="sidebar-menu"><p className="menu-label">MAIN MENU</p><ul>{links.map(([path, label, icon]) => <li key={path} className={location.pathname.endsWith(path) ? 'active' : ''}><Link to={`/${path}`}><i className={`fa-solid ${icon}`} /><span>{label}</span></Link></li>)}</ul></div>
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const closeOnEscape = (event) => { if (event.key === 'Escape') setMenuOpen(false) }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [menuOpen])
+  return <div className="app-container"><aside id="primary-navigation" className={`sidebar${menuOpen ? ' active' : ''}`}><div className="sidebar-header"><div className="logo-icon"><i className="fa-solid fa-book-open-reader" /></div><div className="logo-text"><h1>Project<br />Subaybay</h1><span>Reading Monitoring</span></div></div>
+    <div className="sidebar-menu"><p className="menu-label">MAIN MENU</p><ul>{links.map(([path, label, icon]) => <li key={path} className={location.pathname.endsWith(path) ? 'active' : ''}><Link to={`/${path}`} onClick={() => setMenuOpen(false)}><i className={`fa-solid ${icon}`} /><span>{label}</span></Link></li>)}</ul></div>
     <div className="sidebar-footer"><div className="user-profile"><div className="avatar">{initials}</div><div className="user-info"><span className="user-name">{user.full_name}</span><span className="user-role">{user.role === 'coordinator' ? 'Reading Coordinator' : user.role === 'principal' ? 'Principal' : user.section || 'Teacher'}</span></div></div><Link to="/profile.php" className="logout-btn"><i className="fa-solid fa-user-gear" /><span>My Profile</span></Link><button className="logout-btn" id="logoutBtn" onClick={logout}><i className="fa-solid fa-arrow-right-from-bracket" /><span>Log Out</span></button></div>
-  </aside><main className="main-content"><header className="top-header"><div className="breadcrumb"><span className="current">Reading Performance Dashboard</span></div><div className="header-actions"><div className="dropdown"><button className="btn-dropdown"><span>School Year 2024-2025</span><i className="fa-solid fa-chevron-down" /></button></div><div className="dropdown"><button className="btn-dropdown"><span>Period: End of Year</span><i className="fa-solid fa-chevron-down" /></button></div><Link to="/profile.php" className="btn-icon" title="My Profile"><i className="fa-solid fa-gear" /></Link><Link to="/profile.php" className="user-avatar-small">{initials}</Link></div></header><div className="page-content">{children}</div></main></div>
+  </aside>{menuOpen && <button type="button" className="sidebar-overlay active" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}<main className="main-content"><header className="top-header"><button type="button" className="hamburger-menu" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}><i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'}`} /></button><div className="breadcrumb"><span className="current">Reading Performance Dashboard</span></div><div className="header-actions"><div className="dropdown"><button className="btn-dropdown"><span>School Year 2024-2025</span><i className="fa-solid fa-chevron-down" /></button></div><div className="dropdown"><button className="btn-dropdown"><span>Period: End of Year</span><i className="fa-solid fa-chevron-down" /></button></div><Link to="/profile.php" className="btn-icon" title="My Profile"><i className="fa-solid fa-gear" /></Link><Link to="/profile.php" className="user-avatar-small">{initials}</Link></div></header><div className="page-content">{children}</div></main></div>
 }
 
 function Dashboard() {
