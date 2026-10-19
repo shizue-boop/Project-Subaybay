@@ -151,13 +151,15 @@ function Dashboard() {
     return () => window.clearTimeout(timeout)
   }, [studentSearch])
   useEffect(() => {
-    if (data?.role !== 'teacher') return undefined
+    // The authenticated user is cached before this protected page mounts, so
+    // start the teacher's table request alongside the dashboard request.
+    if (getUser()?.role !== 'teacher') return undefined
     let current = true
     const query = new URLSearchParams({ page: String(studentPage), per_page: '25' })
     if (debouncedStudentSearch) query.set('search', debouncedStudentSearch)
     api(`/students?${query}`).then((result) => { if (current) setStudentResult(result) }).catch((failure) => { if (current) setError(failure.message) })
     return () => { current = false }
-  }, [data?.role, studentPage, debouncedStudentSearch])
+  }, [studentPage, debouncedStudentSearch])
   if (error) return <div className="alert alert-danger">{error}</div>
   if (!data) return <div className="spinner" aria-label="Loading" />
   const m = data.metrics
