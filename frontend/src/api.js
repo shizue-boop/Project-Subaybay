@@ -1,4 +1,5 @@
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '')).replace(/\/$/, '')
+const pendingGetRequests = new Map()
 
 export const getToken = () => sessionStorage.getItem('subaybay_api_token')
 const USER_KEY = 'subaybay_api_user'
@@ -29,7 +30,7 @@ export const clearToken = () => {
   sessionStorage.removeItem(USER_CACHE_AT_KEY)
 }
 
-export async function api(path, { method = 'GET', body, headers = {} } = {}) {
+async function sendApiRequest(path, { method = 'GET', body, headers = {} } = {}) {
   if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
   const requestHeaders = { Accept: 'application/json', ...headers }
   const token = getToken()
@@ -52,6 +53,21 @@ export async function api(path, { method = 'GET', body, headers = {} } = {}) {
     throw error
   }
   return result
+}
+
+export function api(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase()
+  if (method !== 'GET') return sendApiRequest(path, options)
+
+  const key = `${getToken() || ''}:${path}:${JSON.stringify(options.headers || {})}`
+  const pending = pendingGetRequests.get(key)
+  if (pending) return pending
+
+  const request = sendApiRequest(path, options).finally(() => {
+    if (pendingGetRequests.get(key) === request) pendingGetRequests.delete(key)
+  })
+  pendingGetRequests.set(key, request)
+  return request
 }
 
 export async function openApiFile(path) {
