@@ -1,5 +1,15 @@
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '')).replace(/\/$/, '')
 const pendingGetRequests = new Map()
+const cachedGetResponses = new Map()
+const GET_CACHE_TTL_MS = 30_000
+const MAX_CACHED_GETS = 100
+let getCacheGeneration = 0
+
+function invalidateGetCache() {
+  getCacheGeneration += 1
+  cachedGetResponses.clear()
+  pendingGetRequests.clear()
+}
 
 export const getToken = () => sessionStorage.getItem('subaybay_api_token')
 const USER_KEY = 'subaybay_api_user'
@@ -23,8 +33,12 @@ export const saveUser = (user) => {
   sessionStorage.setItem(USER_KEY, JSON.stringify(user))
   sessionStorage.setItem(USER_CACHE_AT_KEY, String(Date.now()))
 }
-export const saveToken = (token) => sessionStorage.setItem('subaybay_api_token', token)
+export const saveToken = (token) => {
+  invalidateGetCache()
+  sessionStorage.setItem('subaybay_api_token', token)
+}
 export const clearToken = () => {
+  invalidateGetCache()
   sessionStorage.removeItem('subaybay_api_token')
   sessionStorage.removeItem(USER_KEY)
   sessionStorage.removeItem(USER_CACHE_AT_KEY)
@@ -57,13 +71,31 @@ async function sendApiRequest(path, { method = 'GET', body, headers = {} } = {})
 
 export function api(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase()
-  if (method !== 'GET') return sendApiRequest(path, options)
+  if (method !== 'GET') {
+    return sendApiRequest(path, options).then((result) => {
+      invalidateGetCache()
+      return result
+    })
+  }
 
   const key = `${getToken() || ''}:${path}:${JSON.stringify(options.headers || {})}`
+  const cached = cachedGetResponses.get(key)
+  if (cached && Date.now() - cached.cachedAt < GET_CACHE_TTL_MS) return Promise.resolve(cached.value)
+  if (cached) cachedGetResponses.delete(key)
+
   const pending = pendingGetRequests.get(key)
   if (pending) return pending
 
-  const request = sendApiRequest(path, options).finally(() => {
+  const generation = getCacheGeneration
+  const request = sendApiRequest(path, options).then((result) => {
+    if (generation === getCacheGeneration) {
+      if (cachedGetResponses.size >= MAX_CACHED_GETS) {
+        cachedGetResponses.delete(cachedGetResponses.keys().next().value)
+      }
+      cachedGetResponses.set(key, { value: result, cachedAt: Date.now() })
+    }
+    return result
+  }).finally(() => {
     if (pendingGetRequests.get(key) === request) pendingGetRequests.delete(key)
   })
   pendingGetRequests.set(key, request)
