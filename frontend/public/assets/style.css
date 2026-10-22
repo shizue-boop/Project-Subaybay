@@ -199,12 +199,30 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
     color: #94A3B8;
     text-decoration: none;
     font-size: 13px;
     padding: 8px 12px;
     border-radius: 6px;
     transition: all 0.2s;
+}
+
+button.logout-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-weight: 400;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.logout-btn:focus-visible {
+    outline: 2px solid #60A5FA;
+    outline-offset: 2px;
 }
 
 .logout-btn:hover {
