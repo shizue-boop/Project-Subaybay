@@ -47,12 +47,18 @@ export const clearToken = () => {
 async function sendApiRequest(path, { method = 'GET', body, headers = {} } = {}) {
   if (!baseUrl) throw new Error('VITE_API_BASE_URL is not configured for this deployment.')
   const requestHeaders = { Accept: 'application/json', ...headers }
-  const token = getToken()
+  const isLoginRequest = path === '/auth/login' && method.toUpperCase() === 'POST'
+  const token = isLoginRequest ? null : getToken()
   if (token) requestHeaders.Authorization = `Bearer ${token}`
   let payload = body
   if (body && !(body instanceof FormData)) {
-    requestHeaders['Content-Type'] = 'application/json'
-    payload = JSON.stringify(body)
+    if (isLoginRequest) {
+      requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8'
+      payload = new URLSearchParams(body)
+    } else {
+      requestHeaders['Content-Type'] = 'application/json'
+      payload = JSON.stringify(body)
+    }
   }
   const response = await fetch(`${baseUrl}${path}`, { method, headers: requestHeaders, body: payload })
   const result = await response.json().catch(() => ({}))
