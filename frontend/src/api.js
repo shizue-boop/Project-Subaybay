@@ -1,7 +1,10 @@
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '')).replace(/\/$/, '')
 const pendingGetRequests = new Map()
 const cachedGetResponses = new Map()
-const GET_CACHE_TTL_MS = 10_000
+// Keep recently loaded page data available while users move between pages.
+// Successful writes clear this cache, so changes made in the app still show
+// immediately on the next request.
+const GET_CACHE_TTL_MS = 60_000
 const MAX_CACHED_GETS = 100
 let getCacheGeneration = 0
 
