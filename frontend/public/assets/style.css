@@ -2337,6 +2337,17 @@ input[type="file"]::file-selector-button:hover {
     margin: 32px auto;
 }
 
+.page-loading {
+    min-height: max(360px, calc(100vh - 260px));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 767px) {
+    .page-loading { min-height: 48vh; }
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
