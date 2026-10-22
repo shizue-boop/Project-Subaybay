@@ -1,7 +1,7 @@
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '')).replace(/\/$/, '')
 const pendingGetRequests = new Map()
 const cachedGetResponses = new Map()
-const GET_CACHE_TTL_MS = 30_000
+const GET_CACHE_TTL_MS = 10_000
 const MAX_CACHED_GETS = 100
 let getCacheGeneration = 0
 
