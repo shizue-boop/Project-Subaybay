@@ -2344,6 +2344,17 @@ input[type="file"]::file-selector-button:hover {
     justify-content: center;
 }
 
+.auth-loading {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+}
+
+.auth-loading .page-loading {
+    width: min(100%, 720px);
+    min-height: 50vh;
+}
+
 @media (max-width: 767px) {
     .page-loading { min-height: 48vh; }
 }
