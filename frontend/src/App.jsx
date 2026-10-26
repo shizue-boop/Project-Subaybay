@@ -25,6 +25,53 @@ function useToastValue(type = 'error') {
   return [value, setFeedback]
 }
 
+function requestConfirmation(options) {
+  return new Promise((resolve) => {
+    window.dispatchEvent(new CustomEvent('subaybay:confirm', { detail: { ...options, resolve } }))
+  })
+}
+
+function ConfirmationDialog() {
+  const [confirmation, setConfirmation] = useState(null)
+  const resolver = useRef(null)
+  const confirmButton = useRef(null)
+  const cancelButton = useRef(null)
+  useEffect(() => {
+    function open(event) {
+      resolver.current?.(false)
+      resolver.current = event.detail.resolve
+      setConfirmation(event.detail)
+    }
+    window.addEventListener('subaybay:confirm', open)
+    return () => window.removeEventListener('subaybay:confirm', open)
+  }, [])
+  useEffect(() => {
+    if (!confirmation) return undefined
+    if (confirmation.tone === 'danger') cancelButton.current?.focus()
+    else confirmButton.current?.focus()
+    function closeOnEscape(event) { if (event.key === 'Escape') finish(false) }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [confirmation])
+  function finish(confirmed) {
+    resolver.current?.(confirmed)
+    resolver.current = null
+    setConfirmation(null)
+  }
+  if (!confirmation) return null
+  return <div className="confirmation-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) finish(false) }}>
+    <section className="confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmation-title" aria-describedby="confirmation-message">
+      <div className={`confirmation-icon ${confirmation.tone === 'danger' ? 'confirmation-icon-danger' : ''}`}><i className={`fa-solid ${confirmation.tone === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-question'}`} /></div>
+      <h2 id="confirmation-title">{confirmation.title || 'Please confirm'}</h2>
+      <p id="confirmation-message">{confirmation.message}</p>
+      <div className="confirmation-actions">
+        <button ref={cancelButton} type="button" className="btn btn-secondary" onClick={() => finish(false)}>Cancel</button>
+        <button ref={confirmButton} type="button" className={`btn ${confirmation.tone === 'danger' ? 'btn-danger' : 'btn-primary'}`} onClick={() => finish(true)}>{confirmation.confirmLabel || 'Continue'}</button>
+      </div>
+    </section>
+  </div>
+}
+
 const adminLinks = [
   ['dashboard.php', 'Dashboard', 'fa-gauge-high'], ['students.php', 'Pupils', 'fa-graduation-cap'],
   ['endorsements.php', 'Endorsement & Approval', 'fa-file-signature'], ['remedial_sessions.php', 'Remedial Monitoring', 'fa-hand-holding-heart'],
@@ -425,7 +472,11 @@ function StudentPage({ user }) {
     }).catch((failure) => { if (current) { setError(failure.message); setLoading(false) } })
     return () => { current = false }
   }, [page, debouncedSearch, section, readingLevel])
-  function beginEdit(student) { setEditing(student); setModal(true); setError('') }
+  async function beginEdit(student) {
+    const confirmed = await requestConfirmation({ title: 'Edit pupil profile?', message: 'Are you sure you want to edit this pupil profile?', confirmLabel: 'Continue' })
+    if (!confirmed) return
+    setEditing(student); setModal(true); setError('')
+  }
   function beginCreate() { setEditing(null); setModal(true); setError('') }
   async function save(event) {
     event.preventDefault(); setError('')
@@ -442,7 +493,8 @@ function StudentPage({ user }) {
     catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) }
   }
   async function remove(student) {
-    if (!window.confirm('Are you sure you want to delete this item?')) return
+    const confirmed = await requestConfirmation({ title: 'Remove pupil?', message: `Are you sure you want to remove this pupil${student.full_name ? ` (${student.full_name})` : ''}?`, confirmLabel: 'Remove', tone: 'danger' })
+    if (!confirmed) return
     try { await api(`/students/${student.id}`, { method: 'DELETE' }); await load() } catch (failure) { setError(failure.message) }
   }
   const badge = (profile) => ['Grade Ready', 'Independent'].includes(profile) ? 'badge-green' : ['Light Refresher', 'Instructional'].includes(profile) ? 'badge-blue' : ['Moderate Refresher'].includes(profile) ? 'badge-yellow' : ['Full Refresher', 'Frustration'].includes(profile) ? 'badge-red' : 'badge-blue'
@@ -558,14 +610,24 @@ function FeaturePage({ kind, user }) {
     }
     catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) }
   }
+  async function editTeacherAccount(row, isPrincipal = false) {
+    const accountType = isPrincipal ? 'principal' : 'teacher'
+    const confirmed = await requestConfirmation({ title: `Edit ${accountType} account?`, message: `Are you sure you want to edit this ${accountType} account?`, confirmLabel: 'Continue' })
+    if (!confirmed) return
+    setEditingRow(row); setEditingPrincipal(isPrincipal); setError(''); setModal(true)
+  }
   async function accountAction(row, action) {
-    if (action === 'reset-password' && !window.confirm(`Reset ${row.full_name}'s password?`)) return
-    if (action === 'toggle' && !window.confirm(`${row.status === 'active' ? 'Deactivate' : 'Activate'} ${row.full_name}'s account?`)) return
+    const active = row.status === 'active'
+    const verb = action === 'reset-password' ? 'reset' : action === 'toggle' ? (active ? 'deactivate' : 'activate') : action
+    const target = action === 'reset-password' ? 'password for this account' : 'this account'
+    const confirmed = await requestConfirmation({ title: `${verb[0].toUpperCase()}${verb.slice(1)} account?`, message: `Are you sure you want to ${verb} ${target}${action === 'reset-password' ? '' : ` (${row.full_name})`}?`, confirmLabel: verb[0].toUpperCase() + verb.slice(1), tone: action === 'toggle' && active || action === 'delete' ? 'danger' : 'primary' })
+    if (!confirmed) return
     try { const endpoint = row.role === 'principal' ? `/teachers/principal/${action}` : `/teachers/${row.id}/${action}`; const result = await api(endpoint, { method: 'POST' }); setNotice(result.message); await load() }
     catch (failure) { setError(failure.message) }
   }
   async function deleteMaterial(row) {
-    if (!window.confirm(`Delete “${row.title}”? This also removes its uploaded file.`)) return
+    const confirmed = await requestConfirmation({ title: 'Remove learning material?', message: `Are you sure you want to remove this learning material? This will also delete “${row.title}” and its uploaded file.`, confirmLabel: 'Remove', tone: 'danger' })
+    if (!confirmed) return
     try { await api(`/materials/${row.id}`, { method: 'DELETE' }); await load() }
     catch (failure) { setError(failure.message) }
   }
@@ -578,8 +640,8 @@ function FeaturePage({ kind, user }) {
     {kind === 'endorsements' && result?.counts && <div className="endorsement-status-filters">{Object.entries(result.counts).map(([status, total]) => <button type="button" className={`btn ${statusFilter === status ? 'btn-primary' : 'btn-secondary'}`} key={status} onClick={() => setStatusFilter(status)}>{status}<span>{total}</span></button>)}</div>}
     {kind === 'materials' && <><div className="card materials-guidance"><div className="card-header"><div className="card-title">CRLA-aligned learning focus</div></div><div className="card-body"><p><strong>Part 1 — Foundational skills:</strong> Practice alphabet knowledge, phonological awareness, decoding, word recognition, and sentence reading.</p><p><strong>Part 2 — Fluency and comprehension:</strong> Provide practice for reading accuracy, pacing, prosody, and understanding text.</p><p><strong>Suggested instructional use:</strong> Match supplementary practice to the learner’s reading profile and grade level.</p><p className="material-guidance-note">Use original supplementary practice content. Follow your school’s rules for restricted assessment materials.</p></div></div><MaterialsGrid rows={rows} canDelete={user.role === 'coordinator'} onDelete={deleteMaterial} onError={setError} /><PaginationControls pagination={result?.pagination} onPageChange={setPage} /></>}
     {kind === 'schedule' && <ScheduleCalendar rows={rows} weekOffset={scheduleWeekOffset} onWeekOffsetChange={setScheduleWeekOffset} />}
-    {kind === 'teachers' && user.role === 'coordinator' && result?.principal && <div className="card principal-account-card"><div className="card-header"><div className="card-title">Principal Account</div><span className={`badge-status ${result.principal.status === 'active' ? 'badge-green' : 'badge-red'}`}>{result.principal.status}</span></div><div className="card-body principal-account-row"><div><b>{result.principal.full_name}</b><div>{result.principal.email}</div></div><div className="table-actions"><button className="btn-table-action btn-edit" title="Edit principal account" onClick={() => { setEditingRow(result.principal); setEditingPrincipal(true); setError(''); setModal(true) }}><i className="fa-solid fa-pen" /></button><button className="btn-table-action" title="Activate or deactivate principal account" onClick={() => accountAction({ ...result.principal, role: 'principal' }, 'toggle')}><i className="fa-solid fa-power-off" /></button><button className="btn-table-action" title="Reset principal password" onClick={() => accountAction({ ...result.principal, role: 'principal' }, 'reset-password')}><i className="fa-solid fa-key" /></button></div></div></div>}
-    {kind === 'categories' ? <div className="category-groups">{[...new Set(rows.map((row) => row.grade_level))].map((grade) => { const group = rows.filter((row) => row.grade_level === grade); const theme = (name) => ({ 'Full Refresher': 'full', 'Moderate Refresher': 'moderate', 'Light Refresher': 'light', 'Grade Ready': 'ready' })[name] || 'light'; return <div className="card" key={grade}><div className="card-header"><div><div className="card-title">{grade}</div><div className="card-subtitle">{group[0]?.assessment_type || ''}</div></div></div><div className="card-body"><div className="category-grid">{group.map((row) => <div className={`category-card ${theme(row.category_name)}`} key={row.id}><div className="category-name">{row.category_name}</div><div className="category-detail"><strong>Score Range:</strong> {row.score_range}</div><div className="category-detail"><strong>Recommended Action:</strong> {row.recommended_action}</div></div>)}</div></div></div>})}{!rows.length && <div className="card"><div className="card-body empty-state">No grade categories found.</div></div>}</div> : <div className="card"><div className="card-header"><div className="card-title">{kind === 'teachers' ? 'Teacher Accounts' : config.title}</div><span className="record-count">{result?.pagination?.total ?? rows.length} records</span></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table"><thead><tr>{config.cols.map(([, title]) => <th key={title}>{title}</th>)}{((kind === 'endorsements' && result?.reviewer && user.role === 'coordinator') || kind === 'reports' || (kind === 'teachers' && user.role === 'coordinator')) && <th>Actions</th>}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.id || index}>{config.cols.map(([key]) => <td key={key}>{kind === 'teachers' && key === 'full_name' ? <Link to={`/teacher_profile.php?id=${row.id}`}>{row[key]}</Link> : row[key] ?? '—'}</td>)}{kind === 'endorsements' && <td><div className="table-actions"><Link className="btn btn-sm btn-secondary" to={`/endorsement_detail.php?id=${row.id}`}>Details</Link>{result?.reviewer && user.role === 'coordinator' && ['Pending', 'Returned for Revision'].includes(row.status) && <><button className="btn btn-sm btn-primary" onClick={() => review(row, 'Approved')}>Approve</button><button className="btn btn-sm btn-secondary" onClick={() => review(row, 'Returned for Revision')}>Return</button><button className="btn btn-sm btn-danger" onClick={() => review(row, 'Rejected')}>Reject</button></>}</div></td>}{kind === 'reports' && <td><button className="btn btn-sm btn-primary" onClick={() => downloadApiFile(`/reports/${row.id}/download`, row.file_path?.split(/[\\/]/).pop() || `report-${row.id}.html`).catch((failure) => setError(failure.message))}><i className="fa-solid fa-download" /> Download</button></td>}{kind === 'teachers' && user.role === 'coordinator' && <td><div className="table-actions"><button className="btn-table-action btn-edit" title="Edit user" onClick={() => { setEditingRow(row); setEditingPrincipal(false); setError(''); setModal(true) }}><i className="fa-solid fa-pen" /></button><button className="btn-table-action" title={row.status === 'active' ? 'Deactivate account' : 'Activate account'} onClick={() => accountAction(row, 'toggle')}><i className="fa-solid fa-power-off" /></button><button className="btn-table-action" title="Reset account password" onClick={() => accountAction(row, 'reset-password')}><i className="fa-solid fa-key" /></button></div></td>}</tr>)}{!rows.length && <tr><td colSpan={config.cols.length + ((kind === 'endorsements' && result?.reviewer && user.role === 'coordinator') || kind === 'reports' || (kind === 'teachers' && user.role === 'coordinator') ? 1 : 0)}>No records found.</td></tr>}</tbody></table></div></div></div>}
+    {kind === 'teachers' && user.role === 'coordinator' && result?.principal && <div className="card principal-account-card"><div className="card-header"><div className="card-title">Principal Account</div><span className={`badge-status ${result.principal.status === 'active' ? 'badge-green' : 'badge-red'}`}>{result.principal.status}</span></div><div className="card-body principal-account-row"><div><b>{result.principal.full_name}</b><div>{result.principal.email}</div></div><div className="table-actions"><button className="btn-table-action btn-edit" title="Edit principal account" onClick={() => editTeacherAccount(result.principal, true)}><i className="fa-solid fa-pen" /></button><button className="btn-table-action" title="Activate or deactivate principal account" onClick={() => accountAction({ ...result.principal, role: 'principal' }, 'toggle')}><i className="fa-solid fa-power-off" /></button><button className="btn-table-action" title="Reset principal password" onClick={() => accountAction({ ...result.principal, role: 'principal' }, 'reset-password')}><i className="fa-solid fa-key" /></button></div></div></div>}
+    {kind === 'categories' ? <div className="category-groups">{[...new Set(rows.map((row) => row.grade_level))].map((grade) => { const group = rows.filter((row) => row.grade_level === grade); const theme = (name) => ({ 'Full Refresher': 'full', 'Moderate Refresher': 'moderate', 'Light Refresher': 'light', 'Grade Ready': 'ready' })[name] || 'light'; return <div className="card" key={grade}><div className="card-header"><div><div className="card-title">{grade}</div><div className="card-subtitle">{group[0]?.assessment_type || ''}</div></div></div><div className="card-body"><div className="category-grid">{group.map((row) => <div className={`category-card ${theme(row.category_name)}`} key={row.id}><div className="category-name">{row.category_name}</div><div className="category-detail"><strong>Score Range:</strong> {row.score_range}</div><div className="category-detail"><strong>Recommended Action:</strong> {row.recommended_action}</div></div>)}</div></div></div>})}{!rows.length && <div className="card"><div className="card-body empty-state">No grade categories found.</div></div>}</div> : <div className="card"><div className="card-header"><div className="card-title">{kind === 'teachers' ? 'Teacher Accounts' : config.title}</div><span className="record-count">{result?.pagination?.total ?? rows.length} records</span></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table"><thead><tr>{config.cols.map(([, title]) => <th key={title}>{title}</th>)}{((kind === 'endorsements' && result?.reviewer && user.role === 'coordinator') || kind === 'reports' || (kind === 'teachers' && user.role === 'coordinator')) && <th>Actions</th>}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.id || index}>{config.cols.map(([key]) => <td key={key}>{kind === 'teachers' && key === 'full_name' ? <Link to={`/teacher_profile.php?id=${row.id}`}>{row[key]}</Link> : row[key] ?? '—'}</td>)}{kind === 'endorsements' && <td><div className="table-actions"><Link className="btn btn-sm btn-secondary" to={`/endorsement_detail.php?id=${row.id}`}>Details</Link>{result?.reviewer && user.role === 'coordinator' && ['Pending', 'Returned for Revision'].includes(row.status) && <><button className="btn btn-sm btn-primary" onClick={() => review(row, 'Approved')}>Approve</button><button className="btn btn-sm btn-secondary" onClick={() => review(row, 'Returned for Revision')}>Return</button><button className="btn btn-sm btn-danger" onClick={() => review(row, 'Rejected')}>Reject</button></>}</div></td>}{kind === 'reports' && <td><button className="btn btn-sm btn-primary" onClick={() => downloadApiFile(`/reports/${row.id}/download`, row.file_path?.split(/[\\/]/).pop() || `report-${row.id}.html`).catch((failure) => setError(failure.message))}><i className="fa-solid fa-download" /> Download</button></td>}{kind === 'teachers' && user.role === 'coordinator' && <td><div className="table-actions"><button className="btn-table-action btn-edit" title="Edit user" onClick={() => editTeacherAccount(row)}><i className="fa-solid fa-pen" /></button><button className="btn-table-action" title={row.status === 'active' ? 'Deactivate account' : 'Activate account'} onClick={() => accountAction(row, 'toggle')}><i className="fa-solid fa-power-off" /></button><button className="btn-table-action" title="Reset account password" onClick={() => accountAction(row, 'reset-password')}><i className="fa-solid fa-key" /></button></div></td>}</tr>)}{!rows.length && <tr><td colSpan={config.cols.length + ((kind === 'endorsements' && result?.reviewer && user.role === 'coordinator') || kind === 'reports' || (kind === 'teachers' && user.role === 'coordinator') ? 1 : 0)}>No records found.</td></tr>}</tbody></table></div></div></div>}
     {serverPaginated && kind !== 'materials' && <PaginationControls pagination={result?.pagination} onPageChange={setPage} />}
     {modal && <><div className="modal-overlay active" onClick={() => { setModal(false); setEditingRow(null); setEditingPrincipal(false) }} /><div className="modal active"><div className="modal-header"><div className="modal-title">{kind === 'reports' ? 'Generate Report' : kind === 'teachers' ? (editingPrincipal ? 'Edit Principal Account' : editingRow ? 'Edit Teacher' : 'Add Teacher Account') : config.title}</div><button className="modal-close" type="button" onClick={() => { setModal(false); setEditingRow(null); setEditingPrincipal(false) }}>&times;</button></div><form onSubmit={submit} encType="multipart/form-data"><div className="modal-body">{config.fields.filter(([name]) => !(kind === 'sessions' && name === 'teacher_id' && !isAdmin) && !(kind === 'teachers' && editingPrincipal && !['full_name', 'email'].includes(name))).map(([name, label, type, options]) => <div className="form-group" key={name}><label className="form-label" htmlFor={`${kind}-${name}`}>{label}</label>{type === 'textarea' ? <textarea className="form-textarea" id={`${kind}-${name}`} name={name} rows="3" defaultValue={editingRow?.[name] || ''} required={!['remarks', 'reading_difficulty', 'teacher_remarks', 'description', 'recommended_action'].includes(name)} /> : (type === 'select' || type === 'student' || type === 'teacher') ? <select className="form-select" id={`${kind}-${name}`} name={name} defaultValue={editingRow?.[name] || ''} required><option value="">Select</option>{(type === 'student' ? students.map((student) => [student.id, `${student.full_name} - ${student.grade_level} ${student.section}`]) : type === 'teacher' ? teachers.map((teacher) => [teacher.id, `${teacher.full_name} (${teacher.grade_level || ''} ${teacher.section || ''})`]) : options.map((option) => [option, option])).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select> : <input className="form-input" id={`${kind}-${name}`} type={type} name={name} defaultValue={editingRow?.[name] || ''} min={typeof options === 'object' ? options.min : undefined} max={typeof options === 'object' ? options.max : undefined} required={!['notes', 'remarks', 'reading_difficulty', 'teacher_remarks', 'description', 'file'].includes(name)} accept={type === 'file' ? '.pdf,.doc,.docx,.mp3,.ppt,.pptx,.xls,.xlsx' : undefined} />}</div>)}</div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => { setModal(false); setEditingRow(null); setEditingPrincipal(false) }}>Cancel</button><button type="submit" className="btn btn-primary">{editingRow ? 'Save Changes' : 'Save'}</button></div></form></div></>}
   </>
@@ -675,10 +737,10 @@ function ProfilePage() {
     return () => { if (activeUrl) URL.revokeObjectURL(activeUrl) }
   }, [data?.user?.id, data?.user?.profile_image])
   useEffect(() => { if (profileImageMissing) showToast('Your previous profile photo is unavailable. Upload it again to save it permanently.', 'warning') }, [profileImageMissing])
-  async function update(event) { event.preventDefault(); setError(''); setMessage(''); try { const result = await api('/profile', { method: 'PUT', body: Object.fromEntries(new FormData(event.currentTarget)) }); setMessage(result.message); await load() } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) } }
+  async function update(event) { event.preventDefault(); const form = event.currentTarget; const body = Object.fromEntries(new FormData(form)); const confirmed = await requestConfirmation({ title: 'Save profile changes?', message: 'Are you sure you want to edit this profile?', confirmLabel: 'Save Changes' }); if (!confirmed) return; setError(''); setMessage(''); try { const result = await api('/profile', { method: 'PUT', body }); setMessage(result.message); await load() } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) } }
   async function uploadImage(event) { event.preventDefault(); const formElement = event.currentTarget; setError(''); setMessage(''); try { const result = await api('/profile/image', { method: 'POST', body: new FormData(formElement) }); setMessage(result.message); await load(); formElement.reset() } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) } }
-  async function removeImage() { setError(''); setMessage(''); try { const result = await api('/profile/image', { method: 'DELETE' }); setMessage(result.message); await load(); const input = document.getElementById('profile-image'); if (input) input.value = '' } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) } }
-  async function toggleStatus() { if (!window.confirm(`Are you sure you want to ${data.user.status === 'active' ? 'deactivate' : 'activate'} your account?`)) return; try { const result = await api('/profile/toggle-status', { method: 'POST' }); setMessage(result.message); await load() } catch (failure) { setError(failure.message) } }
+  async function removeImage() { const confirmed = await requestConfirmation({ title: 'Remove profile photo?', message: 'Are you sure you want to remove this profile photo?', confirmLabel: 'Remove', tone: 'danger' }); if (!confirmed) return; setError(''); setMessage(''); try { const result = await api('/profile/image', { method: 'DELETE' }); setMessage(result.message); await load(); const input = document.getElementById('profile-image'); if (input) input.value = '' } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) } }
+  async function toggleStatus() { const active = data.user.status === 'active'; const action = active ? 'deactivate' : 'activate'; const confirmed = await requestConfirmation({ title: `${action[0].toUpperCase()} account?`, message: `Are you sure you want to ${action} this account?`, confirmLabel: action[0].toUpperCase() + action, tone: active ? 'danger' : 'primary' }); if (!confirmed) return; try { const result = await api('/profile/toggle-status', { method: 'POST' }); setMessage(result.message); await load() } catch (failure) { setError(failure.message) } }
   if (!data) return error ? null : <PageLoading label="Loading profile" />
   const user = data.user
   const roleLabel = user.role === 'coordinator' ? 'Reading Coordinator' : user.role === 'principal' ? 'Principal' : 'Teacher'
@@ -774,4 +836,4 @@ function AppRoutes() {
   </Routes>
 }
 
-export default function App() { return <BrowserRouter><ActivityToasts /><AppRoutes /></BrowserRouter> }
+export default function App() { return <BrowserRouter><ActivityToasts /><ConfirmationDialog /><AppRoutes /></BrowserRouter> }
