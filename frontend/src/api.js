@@ -132,6 +132,7 @@ export async function apiFileObjectUrl(path) {
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
   const response = await fetch(`${baseUrl}${path}`, { headers })
+  if (response.status === 204) return null
   if (!response.ok) throw new Error('File could not be opened.')
   return URL.createObjectURL(await response.blob())
 }
