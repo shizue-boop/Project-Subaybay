@@ -644,7 +644,7 @@ function ProfilePage() {
   useEffect(() => { load().catch((failure) => setError(failure.message)) }, [])
   useEffect(() => {
     let activeUrl
-    if (data?.user?.profile_image) apiFileObjectUrl(`/users/${data.user.id}/image`).then((url) => { if (url) activeUrl = url; setProfileImageUrl(url || ''); setProfileImageMissing(!url) }).catch(() => { setProfileImageUrl(''); setProfileImageMissing(true) })
+    if (data?.user?.profile_image) apiFileObjectUrl(`/users/${data.user.id}/image`).then((url) => { if (url) activeUrl = url; setProfileImageUrl(url || ''); setProfileImageMissing(!url) }).catch((failure) => { setProfileImageUrl(''); setProfileImageMissing(false); setError(failure.message) })
     else { setProfileImageUrl(''); setProfileImageMissing(false) }
     return () => { if (activeUrl) URL.revokeObjectURL(activeUrl) }
   }, [data?.user?.id, data?.user?.profile_image])
