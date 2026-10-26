@@ -128,7 +128,6 @@ include 'sidebar.php';
                 <div class="form-group"><label class="form-label">Assessment Result</label><input name="assessment_result" class="form-input" required></div>
                 <div class="form-group"><label class="form-label">Reading Level</label><input name="reading_level" class="form-input" required></div>
             </div>
-            <div class="form-group"><label class="form-label">Reading Difficulty</label><textarea name="reading_difficulty" class="form-input" rows="2"></textarea></div>
             <div class="form-group"><label class="form-label">Teacher's Remarks</label><textarea name="teacher_remarks" class="form-input" rows="2"></textarea></div>
             <div class="form-group"><label class="form-label">Supporting Document</label><input type="file" name="supporting_document" class="form-input" accept=".pdf,.jpg,.jpeg,.png"></div>
         </div>
