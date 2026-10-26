@@ -57,8 +57,8 @@ include 'sidebar.php';
 
 <div class="card" style="margin-bottom:24px;">
     <div class="card-header"><div class="card-title">Remedial Pupils</div><span class="record-count"><?php echo count($remedialPupils); ?> pupils</span></div>
-    <div class="card-body" style="padding:0;overflow-x:auto;"><table class="data-table"><thead><tr><th>Pupil</th><th>Grade / Section</th><th>Reading Level</th><th>Assigned Teacher</th><th>Latest Session</th><th>Profile</th></tr></thead><tbody>
-    <?php foreach ($remedialPupils as $pupil): ?><tr><td><strong><?php echo htmlspecialchars($pupil['full_name']); ?></strong></td><td><?php echo htmlspecialchars($pupil['grade_level'] . ' - ' . $pupil['section']); ?></td><td><?php echo htmlspecialchars($pupil['reading_profile'] ?? 'Not assessed'); ?></td><td><?php echo htmlspecialchars($pupil['teacher_name'] ?? 'Unassigned'); ?></td><td><?php echo $pupil['latest_session'] ? date('M d, Y', strtotime($pupil['latest_session'])) : '-'; ?></td><td><a href="pupil_profile.php?id=<?php echo $pupil['id']; ?>">View Profile</a></td></tr><?php endforeach; ?><?php if (!$remedialPupils): ?><tr><td colspan="6" style="padding:30px;color:#94A3B8;text-align:center;">No pupils currently under remedial reading.</td></tr><?php endif; ?></tbody></table></div>
+    <div class="card-body" style="padding:0;overflow-x:auto;"><table class="data-table"><thead><tr><th>Pupil</th><th>Grade</th><th>Section</th><th>Reading Level</th><th>Assigned Teacher</th><th>Latest Session</th><th>Profile</th></tr></thead><tbody>
+    <?php foreach ($remedialPupils as $pupil): ?><tr><td><strong><?php echo htmlspecialchars($pupil['full_name']); ?></strong></td><td><?php echo htmlspecialchars($pupil['grade_level']); ?></td><td><?php $pupilSection = trim((string)($pupil['section'] ?? '')); echo htmlspecialchars($pupilSection !== '' && strtoupper($pupilSection) !== 'N/A' ? $pupilSection : '-'); ?></td><td><?php echo htmlspecialchars($pupil['reading_profile'] ?? 'Not assessed'); ?></td><td><?php echo htmlspecialchars($pupil['teacher_name'] ?? 'Unassigned'); ?></td><td><?php echo $pupil['latest_session'] ? date('M d, Y', strtotime($pupil['latest_session'])) : '-'; ?></td><td><a href="pupil_profile.php?id=<?php echo $pupil['id']; ?>">View Profile</a></td></tr><?php endforeach; ?><?php if (!$remedialPupils): ?><tr><td colspan="7" style="padding:30px;color:#94A3B8;text-align:center;">No pupils currently under remedial reading.</td></tr><?php endif; ?></tbody></table></div>
 </div>
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
@@ -72,15 +72,15 @@ include 'sidebar.php';
 </div>
 
 <div class="card remedial-session-list"><div class="card-header"><div class="card-title">Session Records</div><span class="record-count"><?php echo count($sessions); ?> sessions</span></div>
-    <div class="card-body" style="padding:0;overflow-x:auto;"><table class="data-table"><thead><tr><th>Pupil</th><th>Grade / Section</th><th>Related Endorsement</th><th>Session Date</th><th>Session Record</th><th>Action</th></tr></thead><tbody>
+    <div class="card-body" style="padding:0;overflow-x:auto;"><table class="data-table"><thead><tr><th>Pupil</th><th>Grade</th><th>Section</th><th>Related Endorsement</th><th>Session Date</th><th>Session Record</th><th>Action</th></tr></thead><tbody>
     <?php foreach ($sessions as $sess): $sessionRecord = trim($sess['notes'] ?? '') ?: trim(($sess['focus_area'] ?? '') . ' - ' . ($sess['session_type'] ?? ''), ' -'); ?>
         <tr><td><a href="pupil_profile.php?id=<?php echo (int) $sess['student_id']; ?>"><?php echo htmlspecialchars($sess['full_name']); ?></a></td>
-            <td><?php echo htmlspecialchars($sess['grade_level'] . ' / ' . $sess['section']); ?></td>
+            <td><?php echo htmlspecialchars($sess['grade_level']); ?></td><td><?php $sessionSection = trim((string)($sess['section'] ?? '')); echo htmlspecialchars($sessionSection !== '' && strtoupper($sessionSection) !== 'N/A' ? $sessionSection : '-'); ?></td>
             <td><?php if ($sess['related_endorsement_id']): ?><a href="endorsement_detail.php?id=<?php echo (int) $sess['related_endorsement_id']; ?>">Endorsement #<?php echo (int) $sess['related_endorsement_id']; ?></a><?php else: ?>-<?php endif; ?></td>
             <td><?php echo date('M d, Y', strtotime($sess['session_date'])); ?></td><td><span class="session-record-preview" title="<?php echo htmlspecialchars($sessionRecord); ?>"><?php echo htmlspecialchars($sessionRecord ?: '-'); ?></span></td>
             <td><details class="session-detail-disclosure"><summary class="btn btn-sm btn-secondary">View Details</summary><div class="session-detail-popover"><strong><?php echo htmlspecialchars($sess['full_name']); ?></strong><span><?php echo htmlspecialchars($sess['status']); ?> · <?php echo date('M d, Y', strtotime($sess['session_date'])); ?></span><span><?php echo htmlspecialchars(date('g:i A', strtotime($sess['start_time'])) . ' - ' . date('g:i A', strtotime($sess['end_time']))); ?></span><span>Teacher: <?php echo htmlspecialchars($sess['teacher_name'] ?? 'Unassigned'); ?></span><span><?php echo htmlspecialchars($sessionRecord ?: 'No session notes recorded.'); ?></span></div></details></td></tr>
     <?php endforeach; ?>
-    <?php if (!$sessions): ?><tr><td colspan="6" class="text-center" style="padding:30px;color:#94A3B8;">No remedial sessions found.</td></tr><?php endif; ?>
+    <?php if (!$sessions): ?><tr><td colspan="7" class="text-center" style="padding:30px;color:#94A3B8;">No remedial sessions found.</td></tr><?php endif; ?>
     </tbody></table></div>
 </div>
 
