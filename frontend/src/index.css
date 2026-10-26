@@ -75,6 +75,12 @@
 .profile-photo-actions { display: flex; gap: 8px; }
 .profile-photo-actions .btn { flex: 1; min-width: 0; justify-content: center; gap: 6px; padding-inline: 8px; font-size: 12px; white-space: nowrap; }
 .profile-photo-actions .btn:disabled { opacity: .5; cursor: not-allowed; }
+.account-status-card { overflow: hidden; border: 1px solid #e5eaf0; border-radius: 16px; box-shadow: 0 8px 24px rgba(15, 23, 42, .09); }
+.account-status-card .card-header { min-height: 50px; padding: 18px 24px 12px; border-bottom: 1px solid #eef0f4; }
+.account-status-card .card-title { font-size: 17px; font-weight: 500; }
+.account-status-card .card-body { display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 24px; }
+.account-status-card .card-body p { margin: 0; color: #1e293b; font-size: 18px; line-height: 1.5; }
+.account-status-card .card-body .btn { min-height: 44px; padding: 11px 22px; justify-content: center; box-shadow: 0 5px 12px rgba(220, 38, 38, .18); }
 .profile-stat-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
 .profile-stat-row:last-child { border-bottom: 0; }
 .detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
@@ -242,7 +248,7 @@
   .profile-photo-actions { flex-direction: column; }
   .profile-photo-actions .btn { width: 100%; min-height: 44px; }
   .confirmation-backdrop { align-items: flex-end; padding: 12px; }
-  .confirmation-dialog { width: 100%; padding: 22px 18px max(18px, env(safe-area-inset-bottom)); border-radius: 18px; }
+  .confirmation-dialog { width: 100%; padding: 24px 18px max(18px, env(safe-area-inset-bottom)); border-radius: 18px; }
   .confirmation-actions { flex-direction: column-reverse; gap: 8px; }
   .confirmation-actions .btn { width: 100%; min-height: 46px; }
   .table-actions .btn-table-action { flex-basis: 40px; width: 40px; height: 40px; }
@@ -269,13 +275,13 @@
 .system-toast-warning { border-color: #fde68a; }
 .system-toast-warning .system-toast-icon { color: #a16207; background: #fffbeb; }
 .confirmation-backdrop { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 20px; background: rgba(15, 23, 42, .55); backdrop-filter: blur(2px); }
-.confirmation-dialog { width: min(100%, 440px); box-sizing: border-box; padding: 26px; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .25); text-align: center; animation: toast-enter .18s ease-out; }
-.confirmation-icon { display: grid; width: 48px; height: 48px; place-items: center; margin: 0 auto 14px; border-radius: 50%; color: #1d4ed8; background: #eff6ff; font-size: 20px; }
+.confirmation-dialog { width: min(100%, 550px); box-sizing: border-box; padding: 32px 36px; border: 1px solid #e2e8f0; border-radius: 20px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .25); text-align: center; animation: toast-enter .18s ease-out; }
+.confirmation-icon { display: grid; width: 60px; height: 60px; place-items: center; margin: 0 auto 20px; border-radius: 50%; color: #1d4ed8; background: #eff6ff; font-size: 22px; }
 .confirmation-icon-danger { color: #b91c1c; background: #fef2f2; }
-.confirmation-dialog h2 { margin: 0 0 8px; color: #1e293b; font-size: 19px; }
-.confirmation-dialog p { margin: 0; color: #64748b; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
-.confirmation-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.confirmation-actions .btn { min-width: 112px; min-height: 42px; justify-content: center; }
+.confirmation-dialog h2 { margin: 0 0 10px; color: #1e293b; font-size: 23px; line-height: 1.3; }
+.confirmation-dialog p { margin: 0; color: #64748b; font-size: 16px; line-height: 1.55; overflow-wrap: anywhere; }
+.confirmation-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+.confirmation-actions .btn { min-width: 140px; min-height: 52px; justify-content: center; font-size: 15px; white-space: nowrap; }
 .confirmation-actions .btn:focus-visible, .btn-table-action:focus-visible { outline: 3px solid rgba(37, 99, 235, .3); outline-offset: 2px; }
 .table-actions { align-items: center; flex-wrap: wrap; gap: 7px; }
 .table-actions .btn-table-action { flex: 0 0 36px; width: 36px; height: 36px; }

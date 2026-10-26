@@ -618,9 +618,16 @@ function FeaturePage({ kind, user }) {
   }
   async function accountAction(row, action) {
     const active = row.status === 'active'
-    const verb = action === 'reset-password' ? 'reset' : action === 'toggle' ? (active ? 'deactivate' : 'activate') : action
+    const actionText = action === 'reset-password'
+      ? { verb: 'reset', label: 'Reset Password', title: 'Reset password?' }
+      : action === 'toggle' && active
+        ? { verb: 'deactivate', label: 'Deactivate', title: 'Deactivate account?' }
+        : action === 'toggle'
+          ? { verb: 'activate', label: 'Activate', title: 'Activate account?' }
+          : { verb: action, label: action.charAt(0).toUpperCase() + action.slice(1), title: `${action.charAt(0).toUpperCase()}${action.slice(1)} account?` }
+    const { verb, label, title } = actionText
     const target = action === 'reset-password' ? 'password for this account' : 'this account'
-    const confirmed = await requestConfirmation({ title: `${verb[0].toUpperCase()}${verb.slice(1)} account?`, message: `Are you sure you want to ${verb} ${target}${action === 'reset-password' ? '' : ` (${row.full_name})`}?`, confirmLabel: verb[0].toUpperCase() + verb.slice(1), tone: action === 'toggle' && active || action === 'delete' ? 'danger' : 'primary' })
+    const confirmed = await requestConfirmation({ title, message: `Are you sure you want to ${verb} ${target}${action === 'reset-password' ? '' : ` (${row.full_name})`}?`, confirmLabel: label, tone: (action === 'toggle' && active) || action === 'delete' ? 'danger' : 'primary' })
     if (!confirmed) return
     try { const endpoint = row.role === 'principal' ? `/teachers/principal/${action}` : `/teachers/${row.id}/${action}`; const result = await api(endpoint, { method: 'POST' }); setNotice(result.message); await load() }
     catch (failure) { setError(failure.message) }
@@ -771,7 +778,7 @@ function ProfilePage() {
       <div>
         <div className="card"><div className="card-header"><div className="card-title">Personal Information</div><span className={`badge-status ${user.status === 'active' ? 'badge-green' : 'badge-red'}`}>{user.status}</span></div><div className="card-body"><form onSubmit={update}><div className="form-row"><div className="form-group"><label className="form-label">Full Name</label><input className="form-input" name="full_name" defaultValue={user.full_name} required /></div><div className="form-group"><label className="form-label">Email Address</label><input className="form-input" type="email" name="email" defaultValue={user.email} required /></div></div><div className="form-row"><div className="form-group"><label className="form-label">Grade Level</label><input className="form-input" name="grade_level" defaultValue={user.grade_level || ''} /></div><div className="form-group"><label className="form-label">Section</label><input className="form-input" name="section" defaultValue={user.section || ''} /></div></div><div className="form-group"><label className="form-label">Contact Number</label><input className="form-input" name="contact_number" defaultValue={user.contact_number || ''} /></div><button className="btn btn-primary">Save Changes</button></form></div></div>
         <div className="card"><div className="card-header"><div className="card-title">Change Password</div></div><div className="card-body"><form onSubmit={async (event) => { event.preventDefault(); const formElement = event.currentTarget; const form = Object.fromEntries(new FormData(formElement)); try { const r = await api('/profile/password', { method: 'POST', body: form }); setMessage(r.message); setError(''); formElement.reset() } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) } }}><div className="form-row">{[['current_password', 'Current Password'], ['new_password', 'New Password'], ['confirm_password', 'Confirm Password']].map(([name, label]) => <div className="form-group" key={name}><label className="form-label">{label}</label><input className="form-input" type="password" name={name} required /></div>)}</div><button className="btn btn-primary">Update Password</button></form></div></div>
-        {['principal', 'coordinator'].includes(user.role) && <div className="card"><div className="card-header"><div className="card-title">Account Status</div></div><div className="card-body"><p>Deactivate your account to prevent sign in until it is reactivated.</p><button type="button" className={`btn ${user.status === 'active' ? 'btn-danger' : 'btn-success'}`} onClick={toggleStatus}><i className="fa-solid fa-power-off" /> {user.status === 'active' ? 'Deactivate' : 'Activate'} Account</button></div></div>}
+        {['principal', 'coordinator'].includes(user.role) && <div className="card account-status-card"><div className="card-header"><div className="card-title">Account Status</div></div><div className="card-body"><p>{user.status === 'active' ? 'Deactivate your account to prevent sign in until it is reactivated.' : 'Your account is deactivated. Activate it to allow sign in again.'}</p><button type="button" className={`btn ${user.status === 'active' ? 'btn-danger' : 'btn-success'}`} onClick={toggleStatus}><i className="fa-solid fa-power-off" /> {user.status === 'active' ? 'Deactivate' : 'Activate'} Account</button></div></div>}
       </div>
     </div>
   </>
