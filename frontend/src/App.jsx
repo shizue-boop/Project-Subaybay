@@ -102,15 +102,47 @@ function Protected({ children }) {
   const [checked, setChecked] = useState(Boolean(cachedUser))
   const [user, setUser] = useState(cachedUser)
   useEffect(() => {
-    if (!getToken()) { setChecked(true); return }
-    if (cachedUser && isUserCacheFresh()) return
+    const syncUser = (event) => {
+      const updatedUser = event.detail
+      if (!updatedUser || typeof updatedUser !== 'object') return
+      saveUser(updatedUser)
+      setUser(updatedUser)
+    }
+    window.addEventListener('subaybay:user-updated', syncUser)
+    if (!getToken()) { setChecked(true); return () => window.removeEventListener('subaybay:user-updated', syncUser) }
+    if (cachedUser && isUserCacheFresh()) return () => window.removeEventListener('subaybay:user-updated', syncUser)
     api('/auth/me')
       .then(({ user: current }) => { saveUser(current); setUser(current) })
       .catch(() => { clearToken(); setUser(null) })
       .finally(() => setChecked(true))
+    return () => window.removeEventListener('subaybay:user-updated', syncUser)
   }, [])
   if (!checked) return <div className="auth-loading"><PageLoading label="Checking your session" /></div>
   return user ? children(user) : <Navigate to="/index.php" replace />
+}
+
+function UserAvatar({ user, className }) {
+  const [imageUrl, setImageUrl] = useState('')
+  const initials = (user.full_name || 'User').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+  useEffect(() => {
+    let active = true
+    let objectUrl
+    if (!user?.profile_image) {
+      setImageUrl('')
+      return undefined
+    }
+    const version = encodeURIComponent(user.profile_image)
+    apiFileObjectUrl(`/users/${user.id}/image?v=${version}`).then((url) => {
+      if (!active) { URL.revokeObjectURL(url); return }
+      objectUrl = url
+      setImageUrl(url)
+    }).catch(() => { if (active) setImageUrl('') })
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [user?.id, user?.profile_image])
+  return <div className={className}>{imageUrl ? <img src={imageUrl} alt="" /> : initials}</div>
 }
 
 function Shell({ user, children }) {
@@ -129,7 +161,6 @@ function Shell({ user, children }) {
       catch { setNotifications([]) }
     }
   }
-  const initials = (user.full_name || 'User').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -139,8 +170,8 @@ function Shell({ user, children }) {
   }, [menuOpen])
   return <div className="app-container"><aside id="primary-navigation" className={`sidebar${menuOpen ? ' active' : ''}`}><div className="sidebar-header"><div className="logo-icon"><i className="fa-solid fa-book-open-reader" /></div><div className="logo-text"><h1>Project<br />Subaybay</h1><span>Reading Monitoring</span></div></div>
     <div className="sidebar-menu"><p className="menu-label">MAIN MENU</p><ul>{links.map(([path, label, icon]) => <li key={path} className={location.pathname.endsWith(path) ? 'active' : ''}><Link to={`/${path}`} onClick={() => setMenuOpen(false)}><i className={`fa-solid ${icon}`} /><span>{label}</span></Link></li>)}</ul></div>
-    <div className="sidebar-footer"><div className="user-profile"><div className="avatar">{initials}</div><div className="user-info"><span className="user-name">{user.full_name}</span><span className="user-role">{user.role === 'coordinator' ? 'Reading Coordinator' : user.role === 'principal' ? 'Principal' : user.section || 'Teacher'}</span></div></div><Link to="/profile.php" className="logout-btn"><i className="fa-solid fa-user-gear" /><span>My Profile</span></Link><button type="button" className="logout-btn" id="logoutBtn" onClick={logout}><i className="fa-solid fa-arrow-right-from-bracket" /><span>Log Out</span></button></div>
-  </aside>{menuOpen && <button type="button" className="sidebar-overlay active" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}<main className="main-content"><header className="top-header"><button type="button" className="hamburger-menu" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}><i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'}`} /></button><div className="breadcrumb"><span className="current">Reading Performance Dashboard</span></div><div className="header-actions"><div className="notification-wrap"><button type="button" className="btn-icon notification-button" title="Recent pupil updates" aria-label="Recent pupil updates" aria-expanded={notificationsOpen} onClick={toggleNotifications}><i className="fa-solid fa-bell" />{notifications?.length > 0 && <span className="notification-count">{notifications.length}</span>}</button>{notificationsOpen && <div className="notification-panel"><strong>Recent pupil updates</strong>{notifications === null ? <p>Loading updates…</p> : notifications.length ? notifications.map((item) => <Link key={item.id} to={`/pupil_profile.php?id=${item.student_id}`} onClick={() => setNotificationsOpen(false)}><b>{item.full_name}</b><span>{item.current_profile || item.trend || 'Reading progress updated'}</span><small>{item.update_date}</small></Link>) : <p>No recent reading updates.</p>}</div>}</div><Link to="/profile.php" className="user-avatar-small">{initials}</Link></div></header><div className="page-content">{children}</div></main></div>
+    <div className="sidebar-footer"><div className="user-profile"><UserAvatar user={user} className="avatar" /><div className="user-info"><span className="user-name">{user.full_name}</span><span className="user-role">{user.role === 'coordinator' ? 'Reading Coordinator' : user.role === 'principal' ? 'Principal' : user.section || 'Teacher'}</span></div></div><Link to="/profile.php" className="logout-btn"><i className="fa-solid fa-user-gear" /><span>My Profile</span></Link><button type="button" className="logout-btn" id="logoutBtn" onClick={logout}><i className="fa-solid fa-arrow-right-from-bracket" /><span>Log Out</span></button></div>
+  </aside>{menuOpen && <button type="button" className="sidebar-overlay active" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}<main className="main-content"><header className="top-header"><button type="button" className="hamburger-menu" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}><i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'}`} /></button><div className="breadcrumb"><span className="current">Reading Performance Dashboard</span></div><div className="header-actions"><div className="notification-wrap"><button type="button" className="btn-icon notification-button" title="Recent pupil updates" aria-label="Recent pupil updates" aria-expanded={notificationsOpen} onClick={toggleNotifications}><i className="fa-solid fa-bell" />{notifications?.length > 0 && <span className="notification-count">{notifications.length}</span>}</button>{notificationsOpen && <div className="notification-panel"><strong>Recent pupil updates</strong>{notifications === null ? <p>Loading updates…</p> : notifications.length ? notifications.map((item) => <Link key={item.id} to={`/pupil_profile.php?id=${item.student_id}`} onClick={() => setNotificationsOpen(false)}><b>{item.full_name}</b><span>{item.current_profile || item.trend || 'Reading progress updated'}</span><small>{item.update_date}</small></Link>) : <p>No recent reading updates.</p>}</div>}</div><Link to="/profile.php" className="user-avatar-link"><UserAvatar user={user} className="user-avatar-small" /></Link></div></header><div className="page-content">{children}</div></main></div>
 }
 
 function PaginationControls({ pagination, onPageChange }) {
@@ -561,7 +592,11 @@ function PupilProfile() {
 function ProfilePage() {
   const [data, setData] = useState(null); const [error, setError] = useState(''); const [message, setMessage] = useState('')
   const [profileImageUrl, setProfileImageUrl] = useState('')
-  async function load() { setData(await api('/profile')) }
+  async function load() {
+    const result = await api('/profile')
+    setData(result)
+    window.dispatchEvent(new CustomEvent('subaybay:user-updated', { detail: result.user }))
+  }
   useEffect(() => { load().catch((failure) => setError(failure.message)) }, [])
   useEffect(() => {
     let activeUrl
