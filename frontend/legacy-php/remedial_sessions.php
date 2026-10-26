@@ -14,15 +14,33 @@ unset($_SESSION['success'], $_SESSION['error']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['schedule_session'])) {
     $student_id = (int) ($_POST['student_id'] ?? 0);
     $teacher_id = (int) ($_POST['teacher_id'] ?? 0);
+    $related_endorsement_id = (int) ($_POST['related_endorsement_id'] ?? 0);
+    $recorded_by = (int) ($_SESSION['user_id'] ?? 0);
     $required = ['session_date', 'start_time', 'end_time', 'focus_area', 'session_type'];
-    $valid = $student_id > 0 && $teacher_id > 0;
+    $valid = $student_id > 0 && $recorded_by > 0;
     foreach ($required as $field) $valid = $valid && trim($_POST[$field] ?? '') !== '';
     if (!$valid) {
         $_SESSION['error'] = 'Complete all session fields before saving.';
     } else {
-        $stmt = $pdo->prepare("INSERT INTO remedial_sessions (student_id, teacher_id, focus_area, session_type, status, session_date, start_time, end_time, notes) VALUES (?, ?, ?, ?, 'Scheduled', ?, ?, ?, ?)");
-        $stmt->execute([$student_id, $teacher_id, trim($_POST['focus_area']), $_POST['session_type'], $_POST['session_date'], $_POST['start_time'], $_POST['end_time'], trim($_POST['remarks'] ?? '')]);
-        $_SESSION['success'] = 'Remedial session scheduled.';
+        if ($teacher_id <= 0) {
+            $assignedTeacher = $pdo->prepare('SELECT teacher_id FROM students WHERE id = ?');
+            $assignedTeacher->execute([$student_id]);
+            $teacher_id = (int) ($assignedTeacher->fetchColumn() ?: 0);
+        }
+        if ($related_endorsement_id > 0) {
+            $checkEndorsement = $pdo->prepare("SELECT id FROM endorsements WHERE id = ? AND student_id = ? AND status = 'Approved'");
+            $checkEndorsement->execute([$related_endorsement_id, $student_id]);
+            if (!$checkEndorsement->fetchColumn()) {
+                $_SESSION['error'] = 'Choose an approved endorsement belonging to the selected pupil.';
+                header('Location: remedial_sessions.php');
+                exit;
+            }
+        } else {
+            $related_endorsement_id = null;
+        }
+        $stmt = $pdo->prepare("INSERT INTO remedial_sessions (student_id, related_endorsement_id, teacher_id, recorded_by, focus_area, session_type, status, session_date, start_time, end_time, notes) VALUES (?, ?, ?, ?, ?, ?, 'Scheduled', ?, ?, ?, ?)");
+        $stmt->execute([$student_id, $related_endorsement_id, $teacher_id ?: null, $recorded_by, trim($_POST['focus_area']), $_POST['session_type'], $_POST['session_date'], $_POST['start_time'], $_POST['end_time'], trim($_POST['remarks'] ?? '')]);
+        $_SESSION['success'] = 'Remedial session record saved.';
     }
     header('Location: remedial_sessions.php');
     exit;
@@ -34,16 +52,19 @@ $completed = $pdo->query("SELECT COUNT(*) FROM remedial_sessions WHERE status='C
 
 $sessions = $pdo->query("
     SELECT rs.*, s.full_name, s.grade_level, s.section, u.full_name as teacher_name,
-        (SELECT e.id FROM endorsements e WHERE e.student_id = rs.student_id AND e.status = 'Approved' ORDER BY e.reviewed_at DESC, e.id DESC LIMIT 1) AS related_endorsement_id
+        COALESCE(rs.related_endorsement_id, (SELECT e.id FROM endorsements e WHERE e.student_id = rs.student_id AND e.status = 'Approved' ORDER BY e.reviewed_at DESC, e.id DESC LIMIT 1)) AS related_endorsement_id,
+        recorder.full_name AS recorded_by_name
     FROM remedial_sessions rs
     JOIN students s ON rs.student_id = s.id
     LEFT JOIN users u ON rs.teacher_id = u.id
+    LEFT JOIN users recorder ON rs.recorded_by = recorder.id
     ORDER BY rs.session_date DESC
 ")->fetchAll();
 
 $remedialPupils = $pdo->query("SELECT s.id, s.full_name, s.grade_level, s.section, s.reading_profile, MAX(rs.session_date) AS latest_session, u.full_name AS teacher_name FROM students s JOIN remedial_sessions rs ON rs.student_id = s.id LEFT JOIN users u ON rs.teacher_id = u.id WHERE rs.status IN ('Scheduled', 'In Progress') GROUP BY s.id ORDER BY s.grade_level, s.full_name")->fetchAll();
 $pupils = $pdo->query("SELECT id, full_name, grade_level, section FROM students ORDER BY full_name")->fetchAll();
 $teachers = $pdo->query("SELECT id, full_name, grade_level, section FROM users WHERE role = 'teacher' AND status = 'active' ORDER BY full_name")->fetchAll();
+$approvedEndorsements = $pdo->query("SELECT e.id, e.student_id, e.assessment_tool, e.reading_level, s.full_name FROM endorsements e JOIN students s ON s.id = e.student_id WHERE e.status = 'Approved' ORDER BY s.full_name, e.reviewed_at DESC, e.id DESC")->fetchAll();
 
 include 'header.php';
 include 'sidebar.php';
@@ -78,7 +99,7 @@ include 'sidebar.php';
             <td><?php echo htmlspecialchars($sess['grade_level']); ?></td><td><?php $sessionSection = trim((string)($sess['section'] ?? '')); echo htmlspecialchars($sessionSection !== '' && strtoupper($sessionSection) !== 'N/A' ? $sessionSection : '-'); ?></td>
             <td><?php if ($sess['related_endorsement_id']): ?><a href="endorsement_detail.php?id=<?php echo (int) $sess['related_endorsement_id']; ?>">Endorsement #<?php echo (int) $sess['related_endorsement_id']; ?></a><?php else: ?>-<?php endif; ?></td>
             <td><?php echo date('M d, Y', strtotime($sess['session_date'])); ?></td><td><span class="session-record-preview" title="<?php echo htmlspecialchars($sessionRecord); ?>"><?php echo htmlspecialchars($sessionRecord ?: '-'); ?></span></td>
-            <td><details class="session-detail-disclosure"><summary class="btn btn-sm btn-secondary">View Details</summary><div class="session-detail-popover"><strong><?php echo htmlspecialchars($sess['full_name']); ?></strong><span><?php echo htmlspecialchars($sess['status']); ?> · <?php echo date('M d, Y', strtotime($sess['session_date'])); ?></span><span><?php echo htmlspecialchars(date('g:i A', strtotime($sess['start_time'])) . ' - ' . date('g:i A', strtotime($sess['end_time']))); ?></span><span>Teacher: <?php echo htmlspecialchars($sess['teacher_name'] ?? 'Unassigned'); ?></span><span><?php echo htmlspecialchars($sessionRecord ?: 'No session notes recorded.'); ?></span></div></details></td></tr>
+            <td><details class="session-detail-disclosure"><summary class="btn btn-sm btn-secondary">View Details</summary><div class="session-detail-popover"><strong><?php echo htmlspecialchars($sess['full_name']); ?></strong><span><?php echo htmlspecialchars($sess['status']); ?> · <?php echo date('M d, Y', strtotime($sess['session_date'])); ?></span><span><?php echo htmlspecialchars(date('g:i A', strtotime($sess['start_time'])) . ' - ' . date('g:i A', strtotime($sess['end_time']))); ?></span><span>Teacher: <?php echo htmlspecialchars($sess['teacher_name'] ?? 'Unassigned'); ?></span><span>Recorded by: <?php echo htmlspecialchars($sess['recorded_by_name'] ?? 'Not recorded'); ?></span><span>Support: <?php echo htmlspecialchars($sess['focus_area'] ?? '-'); ?></span><span>Notes: <?php echo htmlspecialchars(trim($sess['notes'] ?? '') ?: 'None'); ?></span></div></details></td></tr>
     <?php endforeach; ?>
     <?php if (!$sessions): ?><tr><td colspan="7" class="text-center" style="padding:30px;color:#94A3B8;">No remedial sessions found.</td></tr><?php endif; ?>
     </tbody></table></div>
@@ -89,25 +110,27 @@ include 'sidebar.php';
     <form method="POST" action="">
         <div class="modal-body">
             <div class="form-group">
-                <label class="form-label">Student</label>
+                <label class="form-label">Pupil</label>
                 <select class="form-select" name="student_id" required><option value="">Select pupil</option><?php foreach ($pupils as $pupil): ?><option value="<?php echo $pupil['id']; ?>"><?php echo htmlspecialchars($pupil['full_name'] . ' - ' . $pupil['grade_level'] . ' ' . $pupil['section']); ?></option><?php endforeach; ?></select>
             </div>
+            <div class="form-group"><label class="form-label">Related Approved Endorsement or Intervention (optional)</label><select class="form-select" name="related_endorsement_id" id="relatedEndorsement"><option value="">No related record</option><?php foreach ($approvedEndorsements as $endorsement): ?><option value="<?php echo (int) $endorsement['id']; ?>" data-student-id="<?php echo (int) $endorsement['student_id']; ?>"><?php echo htmlspecialchars($endorsement['full_name'] . ' - Endorsement #' . $endorsement['id'] . ' - ' . ($endorsement['assessment_tool'] ?: 'Reading support') . ' - ' . ($endorsement['reading_level'] ?: 'Approved')); ?></option><?php endforeach; ?></select><small class="form-help">Choose an approved record for the pupil selected above.</small></div>
             <div class="form-row">
-                <div class="form-group"><label class="form-label">Focus Area</label><input type="text" class="form-input" name="focus_area"></div>
-                <div class="form-group"><label class="form-label">Assigned Teacher</label><select class="form-select" name="teacher_id" required><option value="">Select teacher</option><?php foreach ($teachers as $teacher): ?><option value="<?php echo $teacher['id']; ?>"><?php echo htmlspecialchars($teacher['full_name']); ?></option><?php endforeach; ?></select></div>
+                <div class="form-group"><label class="form-label">Reading Support / Intervention Provided</label><input type="text" class="form-input" name="focus_area" required></div>
+                <div class="form-group"><label class="form-label">Assigned Teacher</label><select class="form-select" name="teacher_id"><option value="">Use pupil&apos;s assigned teacher</option><?php foreach ($teachers as $teacher): ?><option value="<?php echo $teacher['id']; ?>"><?php echo htmlspecialchars($teacher['full_name']); ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><label class="form-label">Session Type</label>
-                    <select class="form-select" name="session_type">
-                        <option>Phonics Drill</option><option>Fluency Practice</option><option>Comprehension Guide</option>
+                    <select class="form-select" name="session_type" required>
+                        <option value="">Select support type</option><option>Phonics Drill</option><option>Fluency Practice</option><option>Comprehension Guide</option>
                         <option>Guided Reading</option><option>Vocabulary Building</option>
                     </select>
                 </div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" name="session_date"></div>
+                <div class="form-group"><label class="form-label">Session Date</label><input type="date" class="form-input" name="session_date" required></div>
                 <div class="form-group"><label class="form-label">Start Time</label><input type="time" class="form-input" name="start_time" required></div>
                 <div class="form-group"><label class="form-label">End Time</label><input type="time" class="form-input" name="end_time" required></div>
             </div>
             <div class="form-group"><label class="form-label">Remarks</label><textarea class="form-input" name="remarks" rows="2"></textarea></div>
+            <div class="form-group"><label class="form-label">Recorded By</label><input type="text" class="form-input" value="<?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Current user'); ?>" readonly></div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModal('newSessionModal')">Cancel</button>
@@ -116,4 +139,20 @@ include 'sidebar.php';
     </form>
 </div>
 
+<script>
+(() => {
+    const pupil = document.querySelector('#newSessionModal select[name="student_id"]');
+    const related = document.getElementById('relatedEndorsement');
+    if (!pupil || !related) return;
+    const filterEndorsements = () => {
+        related.value = '';
+        for (const option of related.options) {
+            option.disabled = Boolean(option.dataset.studentId && option.dataset.studentId !== pupil.value);
+            option.hidden = option.disabled;
+        }
+    };
+    pupil.addEventListener('change', filterEndorsements);
+    filterEndorsements();
+})();
+</script>
 <?php include 'footer.php'; ?>
