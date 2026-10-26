@@ -145,22 +145,54 @@ function UserAvatar({ user, className }) {
   return <div className={className}>{imageUrl ? <img src={imageUrl} alt="" /> : initials}</div>
 }
 
+function ActivityToasts() {
+  const [items, setItems] = useState([])
+  useEffect(() => {
+    if (!getToken()) return undefined
+    let active = true
+    let cursor = Number(sessionStorage.getItem('subaybay_notification_cursor') || 0)
+    const timers = new Set()
+    async function poll() {
+      try {
+        const response = await api(`/notifications?after_id=${cursor}&poll=${Date.now()}`)
+        if (!active) return
+        const incoming = response.data || []
+        for (const item of incoming) {
+          cursor = Math.max(cursor, Number(item.id) || 0)
+          sessionStorage.setItem('subaybay_notification_cursor', String(cursor))
+        }
+        if (incoming.length) {
+          setItems((current) => [...current, ...incoming].slice(-4))
+          for (const item of incoming) {
+            const timer = window.setTimeout(() => {
+              setItems((current) => current.filter((notice) => notice.id !== item.id))
+              timers.delete(timer)
+            }, 6500)
+            timers.add(timer)
+          }
+        }
+      } catch { /* Retry on the next poll. */ }
+    }
+    poll()
+    const interval = window.setInterval(poll, 7000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      for (const timer of timers) window.clearTimeout(timer)
+    }
+  }, [])
+  if (!items.length) return null
+  return <div className="system-toast-stack" aria-live="polite" aria-label="System activity notifications">
+    {items.map((item) => <div className="system-toast" key={item.id} role="status"><span className="system-toast-icon"><i className="fa-solid fa-circle-info" /></span><span>{item.message}</span></div>)}
+  </div>
+}
+
 function Shell({ user, children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [notifications, setNotifications] = useState(null)
   const links = user.role === 'teacher' ? teacherLinks : adminLinks
   async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} clearToken(); navigate('/index.php') }
-  async function toggleNotifications() {
-    const opening = !notificationsOpen
-    setNotificationsOpen(opening)
-    if (opening && notifications === null) {
-      try { const dashboard = await api('/dashboard'); setNotifications(dashboard.recent_progress || []) }
-      catch { setNotifications([]) }
-    }
-  }
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -168,10 +200,10 @@ function Shell({ user, children }) {
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [menuOpen])
-  return <div className="app-container"><aside id="primary-navigation" className={`sidebar${menuOpen ? ' active' : ''}`}><div className="sidebar-header"><div className="logo-icon"><i className="fa-solid fa-book-open-reader" /></div><div className="logo-text"><h1>Project<br />Subaybay</h1><span>Reading Monitoring</span></div></div>
+  return <div className="app-container"><ActivityToasts /><aside id="primary-navigation" className={`sidebar${menuOpen ? ' active' : ''}`}><div className="sidebar-header"><div className="logo-icon"><i className="fa-solid fa-book-open-reader" /></div><div className="logo-text"><h1>Project<br />Subaybay</h1><span>Reading Monitoring</span></div></div>
     <div className="sidebar-menu"><p className="menu-label">MAIN MENU</p><ul>{links.map(([path, label, icon]) => <li key={path} className={location.pathname.endsWith(path) ? 'active' : ''}><Link to={`/${path}`} onClick={() => setMenuOpen(false)}><i className={`fa-solid ${icon}`} /><span>{label}</span></Link></li>)}</ul></div>
     <div className="sidebar-footer"><div className="user-profile"><UserAvatar user={user} className="avatar" /><div className="user-info"><span className="user-name">{user.full_name}</span><span className="user-role">{user.role === 'coordinator' ? 'Reading Coordinator' : user.role === 'principal' ? 'Principal' : user.section || 'Teacher'}</span></div></div><Link to="/profile.php" className="logout-btn"><i className="fa-solid fa-user-gear" /><span>My Profile</span></Link><button type="button" className="logout-btn" id="logoutBtn" onClick={logout}><i className="fa-solid fa-arrow-right-from-bracket" /><span>Log Out</span></button></div>
-  </aside>{menuOpen && <button type="button" className="sidebar-overlay active" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}<main className="main-content"><header className="top-header"><button type="button" className="hamburger-menu" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}><i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'}`} /></button><div className="breadcrumb"><span className="current">Reading Performance Dashboard</span></div><div className="header-actions"><div className="notification-wrap"><button type="button" className="btn-icon notification-button" title="Recent pupil updates" aria-label="Recent pupil updates" aria-expanded={notificationsOpen} onClick={toggleNotifications}><i className="fa-solid fa-bell" />{notifications?.length > 0 && <span className="notification-count">{notifications.length}</span>}</button>{notificationsOpen && <div className="notification-panel"><strong>Recent pupil updates</strong>{notifications === null ? <p>Loading updates…</p> : notifications.length ? notifications.map((item) => <Link key={item.id} to={`/pupil_profile.php?id=${item.student_id}`} onClick={() => setNotificationsOpen(false)}><b>{item.full_name}</b><span>{item.current_profile || item.trend || 'Reading progress updated'}</span><small>{item.update_date}</small></Link>) : <p>No recent reading updates.</p>}</div>}</div><Link to="/profile.php" className="user-avatar-link"><UserAvatar user={user} className="user-avatar-small" /></Link></div></header><div className="page-content">{children}</div></main></div>
+  </aside>{menuOpen && <button type="button" className="sidebar-overlay active" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}<main className="main-content"><header className="top-header"><button type="button" className="hamburger-menu" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}><i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'}`} /></button><div className="breadcrumb"><span className="current">Reading Performance Dashboard</span></div><div className="header-actions"><Link to="/profile.php" className="user-avatar-link"><UserAvatar user={user} className="user-avatar-small" /></Link></div></header><div className="page-content">{children}</div></main></div>
 }
 
 function PaginationControls({ pagination, onPageChange }) {
