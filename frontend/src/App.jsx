@@ -97,6 +97,8 @@ function Login() {
       const result = await api('/auth/login', { method: 'POST', body })
       saveToken(result.token)
       saveUser(result.user)
+      showToast(`Welcome, ${result.user.full_name}. You are now logged in.`, 'success')
+      window.dispatchEvent(new Event('subaybay:auth-changed'))
       navigate(result.user.role === 'teacher' ? '/teacher_dashboard.php' : '/dashboard.php')
     } catch (failure) {
       if (failure.status === 403) setError(failure.message)
@@ -217,7 +219,11 @@ function ActivityToasts() {
   const [items, setItems] = useState([])
   useEffect(() => {
     let active = true
+    let token = getToken()
     let cursor = Number(sessionStorage.getItem('subaybay_notification_cursor') || 0)
+    let initialized = Boolean(token && sessionStorage.getItem('subaybay_notification_cursor_token') === token && cursor)
+    if (!initialized) cursor = 0
+    let polling = false
     const timers = new Set()
     function addToast(item) {
       const toast = { ...item, id: String(item.id), type: item.type || 'activity' }
@@ -233,26 +239,56 @@ function ActivityToasts() {
     }
     window.addEventListener('subaybay:toast', showLocalToast)
     async function poll() {
-      if (!getToken()) return
+      const currentToken = getToken()
+      if (!currentToken) { token = null; return }
+      if (currentToken !== token) {
+        token = currentToken
+        cursor = 0
+        initialized = false
+      }
+      if (polling) return
+      polling = true
       try {
         const response = await api(`/notifications?after_id=${cursor}&poll=${Date.now()}`)
-        if (!active) return
+        if (!active || currentToken !== getToken()) return
         const incoming = response.data || []
+        const newestId = incoming.reduce((newest, item) => Math.max(newest, Number(item.id) || 0), cursor)
+        if (!initialized) {
+          cursor = newestId
+          initialized = true
+          sessionStorage.setItem('subaybay_notification_cursor', String(cursor))
+          sessionStorage.setItem('subaybay_notification_cursor_token', currentToken)
+          return
+        }
         for (const item of incoming) {
           cursor = Math.max(cursor, Number(item.id) || 0)
           sessionStorage.setItem('subaybay_notification_cursor', String(cursor))
+          sessionStorage.setItem('subaybay_notification_cursor_token', currentToken)
         }
         if (incoming.length) {
           for (const item of incoming) addToast({ ...item, type: 'activity' })
         }
       } catch { /* Retry on the next poll. */ }
+      finally { polling = false }
     }
     poll()
-    const interval = window.setInterval(poll, 7000)
+    function authChanged() {
+      const currentToken = getToken()
+      if (currentToken === token) return
+      token = currentToken
+      cursor = 0
+      initialized = false
+      sessionStorage.removeItem('subaybay_notification_cursor')
+      sessionStorage.removeItem('subaybay_notification_cursor_token')
+      if (currentToken) poll()
+    }
+    window.addEventListener('subaybay:auth-changed', authChanged)
+    const interval = window.setInterval(poll, 2000)
     return () => {
       active = false
       window.clearInterval(interval)
       window.removeEventListener('subaybay:toast', showLocalToast)
+      window.removeEventListener('subaybay:auth-changed', authChanged)
       for (const timer of timers) window.clearTimeout(timer)
     }
   }, [])
@@ -269,7 +305,7 @@ function Shell({ user, children }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState(null)
   const links = user.role === 'teacher' ? teacherLinks : adminLinks
-  async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} clearToken(); navigate('/index.php') }
+  async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} showToast('You have been logged out.', 'success'); clearToken(); window.dispatchEvent(new Event('subaybay:auth-changed')); navigate('/index.php') }
   async function toggleNotifications() {
     const opening = !notificationsOpen
     setNotificationsOpen(opening)
