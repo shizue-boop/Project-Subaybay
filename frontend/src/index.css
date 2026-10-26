@@ -84,6 +84,16 @@
 .account-status-card .card-body .btn { flex: 0 0 auto; min-width: 220px; min-height: 44px; padding: 11px 22px; justify-content: center; gap: 10px; white-space: nowrap; box-shadow: 0 5px 12px rgba(220, 38, 38, .18); }
 .profile-stat-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
 .profile-stat-row:last-child { border-bottom: 0; }
+.reading-progress-header { align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid #eef0f4; }
+.reading-progress-header .btn { flex: 0 0 auto; min-height: 40px; justify-content: center; white-space: nowrap; }
+.reading-progress-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.reading-progress-summary > div { display: grid; gap: 6px; min-width: 0; }
+.reading-progress-summary span { color: #64748b; font-size: 12px; }
+.reading-progress-summary strong { overflow-wrap: anywhere; color: #1e293b; font-size: 15px; }
+.assessment-entry-pupil { display: grid; gap: 4px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid #dbeafe; border-radius: 10px; background: #eff6ff; }
+.assessment-entry-pupil strong { color: #64748b; font-size: 12px; }
+.assessment-entry-pupil span { color: #1e293b; font-weight: 600; }
+.assessment-entry-note { margin: 0 0 16px; color: #64748b; font-size: 13px; line-height: 1.5; }
 .detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .endorsement-status-filters { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0; }
 .endorsement-status-filters .btn { display: inline-flex; align-items: center; gap: 8px; }
@@ -248,6 +258,9 @@
 @media (max-width: 600px) {
   .profile-photo-actions { flex-direction: column; }
   .profile-photo-actions .btn { width: 100%; min-height: 44px; }
+  .reading-progress-summary { grid-template-columns: 1fr; gap: 12px; }
+  .reading-progress-header { align-items: stretch; }
+  .reading-progress-header .btn { width: 100%; }
   .account-status-card .card-header { padding-inline: 18px; }
   .account-status-card .card-body { padding: 18px; }
   .account-status-card .card-body .btn { width: 100%; min-width: 0; min-height: 48px; }

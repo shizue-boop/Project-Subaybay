@@ -752,17 +752,39 @@ function EndorsementDetail() {
   </>
 }
 
-function PupilProfile() {
+function PupilProfile({ user }) {
   const id = new URLSearchParams(location.search).get('id')
   const [record, setRecord] = useState(null)
   const [error, setError] = useToastValue('error')
+  const [assessmentOpen, setAssessmentOpen] = useState(false)
+  const [assessmentSaving, setAssessmentSaving] = useState(false)
   useEffect(() => { if (id) api(`/students/${id}/details`).then(setRecord).catch((failure) => setError(failure.message)) }, [id])
   if (error) return null
   if (!record) return <PageLoading label="Loading pupil profile" />
   const student = record.student
+  async function saveAssessment(event) {
+    event.preventDefault()
+    const body = Object.fromEntries(new FormData(event.currentTarget))
+    body.student_id = Number(student.id)
+    for (const key of ['task1_score', 'words_score', 'sentences_score']) body[key] = Number(body[key])
+    setAssessmentSaving(true)
+    try {
+      await api('/assessments', { method: 'POST', body })
+      setAssessmentOpen(false)
+      showToast(`Reading assessment saved for ${student.full_name}.`, 'success')
+      try { setRecord(await api(`/students/${student.id}/details`)) }
+      catch { showToast('Assessment saved. Reload the pupil profile to see the latest progress.', 'warning') }
+    } catch (failure) {
+      showToast(Object.values(failure.errors || {}).flat().join(' ') || failure.message, 'error')
+    } finally { setAssessmentSaving(false) }
+  }
+  const assessmentFields = featureConfig.assessments.fields.filter(([name]) => name !== 'student_id')
   return <><div className="page-title">{student.full_name}</div><div className="page-subtitle">Pupil Profile · {student.grade_level} {student.section}</div>
     <div className="profile-layout"><div className="card profile-summary-card"><StudentAvatar student={student} large /><h2>{student.full_name}</h2><p>{student.grade_level} · {student.section}</p></div><div className="stats-grid">{[['LRN', student.lrn], ['Reading Level', student.reading_profile || 'Not Assessed'], ['Latest Score', student.score || '—'], ['Adviser', student.teacher_name || 'Unassigned'], ['Parent / Guardian', student.parent_guardian || '—'], ['Contact Number', student.contact_number || '—']].map(([label, value]) => <div className="stat-card" key={label}><div className="stat-info"><p>{label}</p><h3>{value}</h3></div></div>)}</div></div>
-    {[['Reading Assessments', record.assessments, ['tool', 'assessment_date', 'total_score', 'profile']], ['Progress Updates', record.progress, ['update_date', 'previous_profile', 'current_profile', 'trend']], ['Endorsements', record.endorsements, ['created_at', 'assessment_tool', 'reading_level', 'status']], ['Remedial Schedule and Sessions', record.sessions, ['session_date', 'start_time', 'end_time', 'focus_area', 'session_type', 'status']], ['Remedial Attendance', record.attendance, ['attendance_date', 'session_type', 'focus_area', 'status', 'remarks', 'recorded_by_name']]].map(([sectionTitle, rows, keys]) => <div className="card" key={sectionTitle}><div className="card-header"><div className="card-title">{sectionTitle}</div></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table"><thead><tr>{keys.map((key) => <th key={key}>{key.replaceAll('_', ' ')}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.id}>{keys.map((key) => <td key={key}>{row[key] ?? '—'}</td>)}</tr>)}{!rows.length && <tr><td colSpan={keys.length}>No records found.</td></tr>}</tbody></table></div></div></div>)}
+    <div className="card reading-progress-card"><div className="card-header reading-progress-header"><div><div className="card-title">Reading Progress</div><div className="card-subtitle">Current saved assessment result for this pupil.</div></div>{user.role === 'teacher' && <button type="button" className="btn btn-primary" onClick={() => setAssessmentOpen(true)}><i className="fa-solid fa-plus" /> Add Assessment</button>}</div><div className="card-body reading-progress-summary"><div><span>Current Reading Level</span><strong>{student.reading_profile || 'Not Assessed'}</strong></div><div><span>Latest Score</span><strong>{student.score ?? 'N/A'}</strong></div><div><span>Latest Assessment</span><strong>{record.assessments[0]?.assessment_date || 'N/A'}</strong></div></div></div>
+    {[['Assessment History', record.assessments, ['tool', 'assessment_date', 'total_score', 'profile']], ['Progress Updates', record.progress, ['update_date', 'previous_profile', 'current_profile', 'trend']], ['Endorsements', record.endorsements, ['created_at', 'assessment_tool', 'reading_level', 'status']], ['Remedial Schedule and Sessions', record.sessions, ['session_date', 'start_time', 'end_time', 'focus_area', 'session_type', 'status']], ['Remedial Attendance', record.attendance, ['attendance_date', 'session_type', 'focus_area', 'status', 'remarks', 'recorded_by_name']]].map(([sectionTitle, rows, keys]) => <div className="card" key={sectionTitle}><div className="card-header"><div className="card-title">{sectionTitle}</div></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table"><thead><tr>{keys.map((key) => <th key={key}>{key.replaceAll('_', ' ')}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.id}>{keys.map((key) => <td key={key}>{row[key] ?? '—'}</td>)}</tr>)}{!rows.length && <tr><td colSpan={keys.length}>No records found.</td></tr>}</tbody></table></div></div></div>)}
+    {assessmentOpen && <><div className="modal-overlay active" onClick={() => { if (!assessmentSaving) setAssessmentOpen(false) }} /><section className="modal active" role="dialog" aria-modal="true" aria-labelledby="assessment-modal-title"><div className="modal-header"><div><div className="modal-title" id="assessment-modal-title">Add Reading Assessment</div><div className="card-subtitle">Enter the results from the completed school assessment form.</div></div><button className="modal-close" type="button" aria-label="Close" disabled={assessmentSaving} onClick={() => setAssessmentOpen(false)}>&times;</button></div><form onSubmit={saveAssessment}><div className="modal-body"><div className="assessment-entry-pupil"><strong>Pupil</strong><span>{student.full_name} &middot; {student.grade_level} {student.section}</span></div><p className="assessment-entry-note">Record an offline assessment here. This form does not conduct a reading test.</p>{assessmentFields.map(([name, label, type, options]) => <div className="form-group" key={name}><label className="form-label" htmlFor={`profile-assessment-${name}`}>{label}</label>{type === 'select' ? <select className="form-select" id={`profile-assessment-${name}`} name={name} defaultValue="" required><option value="">Select</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select> : <input className="form-input" id={`profile-assessment-${name}`} type={type} name={name} min={typeof options === 'object' ? options.min : undefined} max={typeof options === 'object' ? options.max : undefined} defaultValue={name === 'assessment_date' ? todayDate : undefined} required />}</div>)}</div><div className="modal-footer"><button type="button" className="btn btn-secondary" disabled={assessmentSaving} onClick={() => setAssessmentOpen(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={assessmentSaving}><i className={`fa-solid ${assessmentSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`} /> {assessmentSaving ? 'Saving...' : 'Save Assessment'}</button></div></form></section></>}
+
   </>
 }
 
@@ -863,7 +885,7 @@ function AppRoutes() {
     <Route path="/students.php" element={<Protected>{(user) => <Shell user={user}><StudentPage user={user} /></Shell>}</Protected>} />
     <Route path="/my_students.php" element={<Protected>{(user) => <Shell user={user}><StudentPage user={user} /></Shell>}</Protected>} />
     <Route path="/student.php" element={<Protected>{(user) => <Shell user={user}><StudentPage user={user} /></Shell>}</Protected>} />
-    <Route path="/pupil_profile.php" element={<Protected>{(user) => <Shell user={user}><PupilProfile /></Shell>}</Protected>} />
+    <Route path="/pupil_profile.php" element={<Protected>{(user) => <Shell user={user}><PupilProfile user={user} /></Shell>}</Protected>} />
     <Route path="/profile.php" element={<Protected>{(user) => <Shell user={user}><ProfilePage /></Shell>}</Protected>} />
     {[
       ['/endorsements.php', 'endorsements'],
