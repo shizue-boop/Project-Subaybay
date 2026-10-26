@@ -94,6 +94,8 @@
 .assessment-entry-pupil strong { color: #64748b; font-size: 12px; }
 .assessment-entry-pupil span { color: #1e293b; font-weight: 600; }
 .assessment-entry-note { margin: 0 0 16px; color: #64748b; font-size: 13px; line-height: 1.5; }
+.form-help { margin: 0 0 14px; color: #64748b; font-size: 13px; line-height: 1.5; }
+.form-group .form-help { margin: 7px 0 0; }
 .detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .endorsement-status-filters { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0; }
 .endorsement-status-filters .btn { display: inline-flex; align-items: center; gap: 8px; }
