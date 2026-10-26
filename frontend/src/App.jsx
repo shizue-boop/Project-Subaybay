@@ -709,7 +709,9 @@ function FeaturePage({ kind, user }) {
     catch (failure) { setError(failure.message) }
   }
   async function review(row, status) {
-    try { await api(`/endorsements/${row.id}/review`, { method: 'POST', body: { status, review_remarks: '' } }); await load() }
+    const confirmed = await requestConfirmation({ title: 'Confirm endorsement decision?', message: `Are you sure you want to set ${row.full_name}'s endorsement to ${status}? Your decision and review date will be recorded.`, confirmLabel: status === 'Returned for Revision' ? 'Return for Revision' : status, tone: status === 'Rejected' ? 'danger' : 'primary' })
+    if (!confirmed) return
+    try { const result = await api(`/endorsements/${row.id}/review`, { method: 'POST', body: { status, review_remarks: '' } }); setNotice(result.message); await load() }
     catch (failure) { setError(failure.message) }
   }
   async function deleteEndorsement(row) {
@@ -782,6 +784,8 @@ function EndorsementDetail() {
   useEffect(() => { if (id) load().catch((failure) => setError(failure.message)); else setError('Endorsement not found.') }, [id])
   async function review(event) {
     event.preventDefault(); const body = Object.fromEntries(new FormData(event.currentTarget))
+    const confirmed = await requestConfirmation({ title: 'Confirm endorsement decision?', message: `Are you sure you want to set this endorsement to ${body.status}? Your decision and review date will be recorded.`, confirmLabel: body.status === 'Returned for Revision' ? 'Return for Revision' : body.status, tone: body.status === 'Rejected' ? 'danger' : 'primary' })
+    if (!confirmed) return
     try { const result = await api(`/endorsements/${id}/review`, { method: 'POST', body }); setMessage(result.message); setError(''); await load() }
     catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) }
   }
