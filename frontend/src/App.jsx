@@ -97,7 +97,6 @@ function Login() {
       const result = await api('/auth/login', { method: 'POST', body })
       saveToken(result.token)
       saveUser(result.user)
-      showToast(`Welcome, ${result.user.full_name}. You are now logged in.`, 'success')
       window.dispatchEvent(new Event('subaybay:auth-changed'))
       navigate(result.user.role === 'teacher' ? '/teacher_dashboard.php' : '/dashboard.php')
     } catch (failure) {
@@ -266,7 +265,10 @@ function ActivityToasts() {
           sessionStorage.setItem('subaybay_notification_cursor_token', currentToken)
         }
         if (incoming.length) {
-          for (const item of incoming) addToast({ ...item, type: 'activity' })
+          for (const item of incoming) {
+            if (/\blogged (in|out)$/i.test(String(item.message || '').trim())) continue
+            addToast({ ...item, type: 'activity' })
+          }
         }
       } catch { /* Retry on the next poll. */ }
       finally { polling = false }
@@ -305,7 +307,7 @@ function Shell({ user, children }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState(null)
   const links = user.role === 'teacher' ? teacherLinks : adminLinks
-  async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} showToast('You have been logged out.', 'success'); clearToken(); window.dispatchEvent(new Event('subaybay:auth-changed')); navigate('/index.php') }
+  async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} clearToken(); window.dispatchEvent(new Event('subaybay:auth-changed')); navigate('/index.php') }
   async function toggleNotifications() {
     const opening = !notificationsOpen
     setNotificationsOpen(opening)
