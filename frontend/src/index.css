@@ -97,6 +97,36 @@
 .form-help { margin: 0 0 14px; color: #64748b; font-size: 13px; line-height: 1.5; }
 .form-group .form-help { margin: 7px 0 0; }
 .detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.endorsement-detail-page { display: grid; gap: 20px; width: 100%; max-width: 1480px; margin: 0 auto; }
+.endorsement-detail-page .detail-heading { margin: 0; }
+.endorsement-detail-page .card { min-width: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 5px 18px rgba(15, 23, 42, .055); }
+.endorsement-detail-page .card-header { min-height: 58px; padding: 16px 22px; border-bottom: 1px solid #edf1f5; }
+.endorsement-detail-page .card-body { padding: 22px; }
+.endorsement-overview-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); gap: 22px; align-items: stretch; }
+.endorsement-pupil-summary { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 22px 24px; border: 1px solid #dbeafe; border-radius: 14px; background: #f5f8ff; }
+.endorsement-eyebrow { color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.endorsement-pupil-summary h2 { margin: 5px 0 20px; color: #172554; font-size: 25px; line-height: 1.25; }
+.endorsement-pupil-summary h2 a { color: inherit; text-decoration: none; }
+.endorsement-pupil-summary h2 a:hover { color: #2563eb; text-decoration: underline; }
+.endorsement-pupil-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.endorsement-pupil-facts > div, .endorsement-submission-facts > div { display: grid; gap: 5px; min-width: 0; }
+.endorsement-pupil-facts span, .endorsement-submission-facts dt, .endorsement-assessment-facts dt { color: #64748b; font-size: 12px; font-weight: 600; }
+.endorsement-pupil-facts strong, .endorsement-submission-facts dd, .endorsement-assessment-facts dd { margin: 0; color: #1e293b; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.endorsement-submission-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; align-content: center; margin: 0; padding: 18px 22px; border: 1px solid #e8edf3; border-radius: 14px; background: #fff; }
+.endorsement-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+.endorsement-assessment-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 0; }
+.endorsement-assessment-facts > div { display: grid; align-content: start; gap: 7px; min-width: 0; }
+.endorsement-assessment-facts .endorsement-fact-wide { grid-column: 1 / -1; }
+.endorsement-notes { display: grid; gap: 14px; }
+.endorsement-notes > div { min-width: 0; padding: 14px 16px; border: 1px solid #e8edf3; border-radius: 12px; background: #f8fafc; }
+.endorsement-notes h3 { margin: 0 0 6px; color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.endorsement-notes p { margin: 0; color: #1e293b; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.endorsement-document .link-button { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.endorsement-review-card form .card-body { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr); gap: 18px; }
+.endorsement-review-card .form-group { margin: 0; }
+.endorsement-history-card .table-responsive { border-radius: 0 0 16px 16px; }
+@media (max-width: 900px) { .endorsement-overview-grid, .endorsement-detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .endorsement-detail-page { gap: 14px; } .endorsement-detail-page .card-header { padding: 14px 16px; } .endorsement-detail-page .card-body { padding: 16px; } .endorsement-pupil-summary { padding: 18px; } .endorsement-pupil-summary h2 { font-size: 21px; margin-bottom: 16px; } .endorsement-pupil-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .endorsement-submission-facts { gap: 15px; padding: 16px; } .endorsement-assessment-facts { gap: 16px; } .endorsement-review-card form .card-body { grid-template-columns: 1fr; gap: 14px; } }
 .endorsement-status-filters { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0; }
 .endorsement-status-filters .btn { display: inline-flex; align-items: center; gap: 8px; }
 .endorsement-status-filters span { display: inline-grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; background: rgba(255,255,255,.2); font-size: 11px; }
