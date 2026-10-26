@@ -52,7 +52,7 @@ $completed = $pdo->query("SELECT COUNT(*) FROM remedial_sessions WHERE status='C
 
 $sessions = $pdo->query("
     SELECT rs.*, s.full_name, s.grade_level, s.section, u.full_name as teacher_name,
-        COALESCE(rs.related_endorsement_id, (SELECT e.id FROM endorsements e WHERE e.student_id = rs.student_id AND e.status = 'Approved' ORDER BY e.reviewed_at DESC, e.id DESC LIMIT 1)) AS related_endorsement_id,
+        COALESCE(rs.related_endorsement_id, (SELECT e.id FROM endorsements e WHERE e.student_id = rs.student_id AND e.status = 'Approved' ORDER BY e.reviewed_at DESC, e.id DESC LIMIT 1)) AS effective_related_endorsement_id,
         recorder.full_name AS recorded_by_name
     FROM remedial_sessions rs
     JOIN students s ON rs.student_id = s.id
@@ -97,7 +97,7 @@ include 'sidebar.php';
     <?php foreach ($sessions as $sess): $sessionRecord = trim($sess['notes'] ?? '') ?: trim(($sess['focus_area'] ?? '') . ' - ' . ($sess['session_type'] ?? ''), ' -'); ?>
         <tr><td><a href="pupil_profile.php?id=<?php echo (int) $sess['student_id']; ?>"><?php echo htmlspecialchars($sess['full_name']); ?></a></td>
             <td><?php echo htmlspecialchars($sess['grade_level']); ?></td><td><?php $sessionSection = trim((string)($sess['section'] ?? '')); echo htmlspecialchars($sessionSection !== '' && strtoupper($sessionSection) !== 'N/A' ? $sessionSection : '-'); ?></td>
-            <td><?php if ($sess['related_endorsement_id']): ?><a href="endorsement_detail.php?id=<?php echo (int) $sess['related_endorsement_id']; ?>">Endorsement #<?php echo (int) $sess['related_endorsement_id']; ?></a><?php else: ?>-<?php endif; ?></td>
+            <td><?php if ($sess['effective_related_endorsement_id']): ?><a href="endorsement_detail.php?id=<?php echo (int) $sess['effective_related_endorsement_id']; ?>">Endorsement #<?php echo (int) $sess['effective_related_endorsement_id']; ?></a><?php else: ?>-<?php endif; ?></td>
             <td><?php echo date('M d, Y', strtotime($sess['session_date'])); ?></td><td><span class="session-record-preview" title="<?php echo htmlspecialchars($sessionRecord); ?>"><?php echo htmlspecialchars($sessionRecord ?: '-'); ?></span></td>
             <td><details class="session-detail-disclosure"><summary class="btn btn-sm btn-secondary">View Details</summary><div class="session-detail-popover"><strong><?php echo htmlspecialchars($sess['full_name']); ?></strong><span><?php echo htmlspecialchars($sess['status']); ?> · <?php echo date('M d, Y', strtotime($sess['session_date'])); ?></span><span><?php echo htmlspecialchars(date('g:i A', strtotime($sess['start_time'])) . ' - ' . date('g:i A', strtotime($sess['end_time']))); ?></span><span>Teacher: <?php echo htmlspecialchars($sess['teacher_name'] ?? 'Unassigned'); ?></span><span>Recorded by: <?php echo htmlspecialchars($sess['recorded_by_name'] ?? 'Not recorded'); ?></span><span>Support: <?php echo htmlspecialchars($sess['focus_area'] ?? '-'); ?></span><span>Notes: <?php echo htmlspecialchars(trim($sess['notes'] ?? '') ?: 'None'); ?></span></div></details></td></tr>
     <?php endforeach; ?>

@@ -669,7 +669,8 @@ function FeaturePage({ kind, user }) {
       .finally(() => { if (current) setSessionContextLoading(false) })
     return () => { current = false }
   }, [kind, modal, sessionStudentId])
-  const sourceRows = config.rows(result || {})
+  const rawRows = config.rows(result || {})
+  const sourceRows = kind === 'sessions' ? rawRows.map((row) => ({ ...row, related_endorsement_id: row.effective_related_endorsement_id ?? row.related_endorsement_id })) : rawRows
   const rows = serverPaginated ? sourceRows : sourceRows.filter((row) => JSON.stringify(row).toLowerCase().includes(search.toLowerCase()) && (kind !== 'endorsements' || statusFilter === 'All' || row.status === statusFilter) && (kind !== 'materials' || ((materialFilters.grade === 'All Grades' || row.grade_level === materialFilters.grade) && (!materialFilters.language || row.language === materialFilters.language) && (!materialFilters.part || row.alignment_part === materialFilters.part) && (materialFilters.profile === 'All Profiles' || row.reading_level === materialFilters.profile))))
   const load = () => setReloadKey((current) => current + 1)
   if (!result) return <><div className="page-title">{config.title}</div><div className="page-subtitle">{config.subtitle}</div>{loading ? <PageLoading label={`Loading ${config.title.toLowerCase()}`} /> : null}</>
