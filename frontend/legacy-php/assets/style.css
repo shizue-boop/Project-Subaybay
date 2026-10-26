@@ -465,6 +465,11 @@ body {
 .settings-section textarea.form-input { min-height: 78px; resize: vertical; }
 .settings-section .card-footer { padding: 0 22px 22px; display: flex; justify-content: flex-end; }
 .endorsement-review-actions { display: flex; justify-content: flex-end; padding: 0 22px 22px; }
+.session-detail-disclosure { position: relative; display: inline-block; }
+.session-detail-disclosure > summary { display: inline-flex; align-items: center; justify-content: center; list-style: none; cursor: pointer; }
+.session-detail-disclosure > summary::-webkit-details-marker { display: none; }
+.session-detail-popover { display: grid; gap: 7px; width: min(270px, 65vw); margin-top: 8px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-dark); background: #fff; box-shadow: var(--shadow-lg); font-size: 12px; line-height: 1.5; }
+.session-detail-popover > span { overflow-wrap: anywhere; color: var(--text-muted); }
 .settings-card-icon { width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; color: var(--primary); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
 .settings-identity { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
 .settings-avatar { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }

@@ -33,7 +33,8 @@ $inProgress = $pdo->query("SELECT COUNT(*) FROM remedial_sessions WHERE status='
 $completed = $pdo->query("SELECT COUNT(*) FROM remedial_sessions WHERE status='Completed'")->fetchColumn();
 
 $sessions = $pdo->query("
-    SELECT rs.*, s.full_name, s.grade_level, s.section, u.full_name as teacher_name
+    SELECT rs.*, s.full_name, s.grade_level, s.section, u.full_name as teacher_name,
+        (SELECT e.id FROM endorsements e WHERE e.student_id = rs.student_id AND e.status = 'Approved' ORDER BY e.reviewed_at DESC, e.id DESC LIMIT 1) AS related_endorsement_id
     FROM remedial_sessions rs
     JOIN students s ON rs.student_id = s.id
     LEFT JOIN users u ON rs.teacher_id = u.id
@@ -70,40 +71,17 @@ include 'sidebar.php';
     <div class="stat-card"><div class="stat-info" style="text-align:center;width:100%;"><h3><?php echo $completed; ?></h3><p>Completed</p></div></div>
 </div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
-    <?php foreach ($sessions as $sess): 
-        $statusClass = match($sess['status']) {
-            'Scheduled' => 'scheduled',
-            'In Progress' => 'in-progress',
-            'Completed' => 'completed',
-            default => 'scheduled'
-        };
-        $profileClass = match(true) {
-            str_contains($sess['focus_area'],'Phonemic') => 'badge-red',
-            str_contains($sess['focus_area'],'Fluency') => 'badge-yellow',
-            str_contains($sess['focus_area'],'Comprehension') => 'badge-blue',
-            default => 'badge-purple'
-        };
-    ?>
-    <div class="intervention-card <?php echo $statusClass; ?>">
-        <div class="intervention-header">
-            <span class="badge-status <?php echo $statusClass === 'completed' ? 'badge-green' : ($statusClass === 'in-progress' ? 'badge-yellow' : 'badge-blue'); ?>"><?php echo $sess['status']; ?></span>
-            <span class="badge-status <?php echo $profileClass; ?>"><?php echo $sess['focus_area']; ?></span>
-        </div>
-        <div class="intervention-pupil">
-            <div class="pupil-avatar"><?php echo strtoupper(substr($sess['full_name'],0,1)); ?></div>
-            <div>
-                <div style="font-weight:600;"><?php echo htmlspecialchars($sess['full_name']); ?></div>
-                <div style="font-size:12px;color:var(--text-muted);"><?php echo $sess['grade_level'].' - '.$sess['section']; ?></div>
-            </div>
-        </div>
-        <div class="intervention-details">
-            <p><strong>Teacher:</strong> <?php echo htmlspecialchars($sess['teacher_name'] ?? 'Unassigned'); ?></p>
-            <p><strong>Date:</strong> <?php echo date('M d, Y',strtotime($sess['session_date'])); ?></p>
-            <p><strong>Time:</strong> <?php echo date('g:i A',strtotime($sess['start_time'])).' - '.date('g:i A',strtotime($sess['end_time'])); ?></p>
-        </div>
-    </div>
+<div class="card remedial-session-list"><div class="card-header"><div class="card-title">Session Records</div><span class="record-count"><?php echo count($sessions); ?> sessions</span></div>
+    <div class="card-body" style="padding:0;overflow-x:auto;"><table class="data-table"><thead><tr><th>Pupil</th><th>Grade / Section</th><th>Related Endorsement</th><th>Session Date</th><th>Session Record</th><th>Action</th></tr></thead><tbody>
+    <?php foreach ($sessions as $sess): $sessionRecord = trim($sess['notes'] ?? '') ?: trim(($sess['focus_area'] ?? '') . ' - ' . ($sess['session_type'] ?? ''), ' -'); ?>
+        <tr><td><a href="pupil_profile.php?id=<?php echo (int) $sess['student_id']; ?>"><?php echo htmlspecialchars($sess['full_name']); ?></a></td>
+            <td><?php echo htmlspecialchars($sess['grade_level'] . ' / ' . $sess['section']); ?></td>
+            <td><?php if ($sess['related_endorsement_id']): ?><a href="endorsement_detail.php?id=<?php echo (int) $sess['related_endorsement_id']; ?>">Endorsement #<?php echo (int) $sess['related_endorsement_id']; ?></a><?php else: ?>-<?php endif; ?></td>
+            <td><?php echo date('M d, Y', strtotime($sess['session_date'])); ?></td><td><span class="session-record-preview" title="<?php echo htmlspecialchars($sessionRecord); ?>"><?php echo htmlspecialchars($sessionRecord ?: '-'); ?></span></td>
+            <td><details class="session-detail-disclosure"><summary class="btn btn-sm btn-secondary">View Details</summary><div class="session-detail-popover"><strong><?php echo htmlspecialchars($sess['full_name']); ?></strong><span><?php echo htmlspecialchars($sess['status']); ?> · <?php echo date('M d, Y', strtotime($sess['session_date'])); ?></span><span><?php echo htmlspecialchars(date('g:i A', strtotime($sess['start_time'])) . ' - ' . date('g:i A', strtotime($sess['end_time']))); ?></span><span>Teacher: <?php echo htmlspecialchars($sess['teacher_name'] ?? 'Unassigned'); ?></span><span><?php echo htmlspecialchars($sessionRecord ?: 'No session notes recorded.'); ?></span></div></details></td></tr>
     <?php endforeach; ?>
+    <?php if (!$sessions): ?><tr><td colspan="6" class="text-center" style="padding:30px;color:#94A3B8;">No remedial sessions found.</td></tr><?php endif; ?>
+    </tbody></table></div>
 </div>
 
 <div id="newSessionModal" class="modal">
