@@ -631,13 +631,20 @@ function UserManagementPage({ user }) {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [students, setStudents] = useState([])
   const [page, setPage] = useState(1)
   const [reloadKey, setReloadKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
+  const [newRole, setNewRole] = useState('teacher')
+  const [newGrade, setNewGrade] = useState('')
+  const [newSection, setNewSection] = useState('')
+  const [selectedPupils, setSelectedPupils] = useState([])
+  const [createdCredentials, setCreatedCredentials] = useState(null)
   const [error, setError] = useToastValue('error')
   const [notice, setNotice] = useToastValue('success')
+  useEffect(() => { api('/students?options=1').then((data) => setStudents(data.data || [])).catch((failure) => setError(failure.message)) }, [])
   useEffect(() => { setPage(1) }, [search, roleFilter, statusFilter])
   useEffect(() => {
     let active = true
@@ -651,12 +658,14 @@ function UserManagementPage({ user }) {
   }, [search, roleFilter, statusFilter, page, reloadKey])
   async function save(event) {
     event.preventDefault()
-    const body = Object.fromEntries(new FormData(event.currentTarget))
+    const formData = new FormData(event.currentTarget)
+    const body = Object.fromEntries(formData)
     try {
       const response = editingUser
         ? await api(editingUser.role === 'principal' ? '/teachers/principal' : `/teachers/${editingUser.id}`, { method: 'PUT', body })
-        : await api('/teachers', { method: 'POST', body })
-      setNotice(`${response.message}${response.temporary_password ? ` Temporary password: ${response.temporary_password}` : ''}`)
+        : await api('/users', { method: 'POST', body: { ...body, student_ids: formData.getAll('student_ids') } })
+      if (!editingUser && response.temporary_password) setCreatedCredentials({ name: body.full_name, password: response.temporary_password })
+      setNotice(response.message)
       setModalOpen(false); setEditingUser(null); setReloadKey((value) => value + 1)
     } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) }
   }
@@ -674,6 +683,8 @@ function UserManagementPage({ user }) {
   }
   if (user.role !== 'coordinator') return <Navigate to="/dashboard.php" replace />
   const rows = result?.data || []
+  const activeRole = editingUser?.role || newRole
+  const unassignedPupils = students.filter((student) => !student.teacher_id && (!newGrade || student.grade_level === newGrade) && (!newSection || student.section === newSection))
   return <section className="user-management-page">
     <div className="page-title">User Management</div>
     <div className="page-subtitle">Manage staff accounts and their authorized pupil scope.</div>
@@ -681,10 +692,20 @@ function UserManagementPage({ user }) {
       <input className="search-input" type="search" placeholder="Search by name or username..." value={search} onChange={(event) => setSearch(event.target.value)} />
       <select className="select-input" aria-label="Filter by role" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}><option value="all">All Roles</option><option value="teacher">Teacher</option><option value="principal">Principal</option></select>
       <select className="select-input" aria-label="Filter by account status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
-      <button type="button" className="btn btn-primary" onClick={() => { setEditingUser(null); setError(''); setModalOpen(true) }}><i className="fa-solid fa-user-plus" /> Add User</button>
+      <button type="button" className="btn btn-primary" onClick={() => { setEditingUser(null); setNewRole('teacher'); setNewGrade(''); setNewSection(''); setSelectedPupils([]); setCreatedCredentials(null); setError(''); setModalOpen(true) }}><i className="fa-solid fa-user-plus" /> Add User</button>
     </div>
+    {createdCredentials && <div className="user-created-credentials"><div><strong>{createdCredentials.name}&apos;s account is ready.</strong><span>Share this temporary password securely:</span><code>{createdCredentials.password}</code></div><button type="button" className="btn btn-secondary" onClick={() => navigator.clipboard?.writeText(createdCredentials.password).then(() => setNotice('Temporary password copied.')).catch(() => setError('Could not copy the password.'))}><i className="fa-regular fa-copy" /> Copy Password</button><button type="button" className="modal-close" aria-label="Dismiss temporary password" onClick={() => setCreatedCredentials(null)}>&times;</button></div>}
     <div className="card"><div className="card-header"><div className="card-title">School Personnel</div><span className="record-count">{result?.pagination?.total ?? rows.length} accounts</span></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table user-management-table"><thead><tr><th>Name</th><th>Username / Email</th><th>Role</th><th>Assigned Grade / Section</th><th>Account Status</th><th>Action</th></tr></thead><tbody>{rows.map((account) => <tr key={account.id}><td className="user-management-name">{account.full_name}</td><td>{account.email}</td><td><span className={`badge-status ${account.role === 'principal' ? 'badge-blue' : 'badge-yellow'}`}>{account.role === 'principal' ? 'Principal' : 'Teacher'}</span></td><td>{account.grade_level || account.section ? `${account.grade_level || '—'}${account.section ? ` / ${account.section}` : ''}` : '—'}</td><td><span className={`badge-status ${account.status === 'active' ? 'badge-green' : 'badge-red'}`}>{account.status === 'active' ? 'Active' : 'Inactive'}</span></td><td><div className="table-actions"><button type="button" className="btn btn-sm btn-secondary" onClick={() => { setEditingUser(account); setError(''); setModalOpen(true) }}><i className="fa-solid fa-pen" /> Edit</button><button type="button" className={`btn btn-sm ${account.status === 'active' ? 'btn-danger' : 'btn-primary'}`} onClick={() => manageAccount(account, 'toggle')}><i className="fa-solid fa-power-off" /> {account.status === 'active' ? 'Deactivate' : 'Activate'}</button><button type="button" className="btn btn-sm btn-secondary" onClick={() => manageAccount(account, 'reset-password')}><i className="fa-solid fa-key" /> Reset Password</button></div></td></tr>)}{!rows.length && <tr><td colSpan="6" className="empty-state">{loading ? 'Loading accounts…' : 'No accounts match these filters.'}</td></tr>}</tbody></table></div><PaginationControls pagination={result?.pagination} onPageChange={setPage} /></div></div>
-    {modalOpen && <><div className="modal-overlay active" onClick={() => setModalOpen(false)} /><section className="modal active user-account-modal" role="dialog" aria-modal="true" aria-labelledby="user-account-modal-title"><div className="modal-header"><div className="modal-title" id="user-account-modal-title">{editingUser ? `Edit ${editingUser.role === 'principal' ? 'Principal' : 'Teacher'} Account` : 'Add Teacher Account'}</div><button type="button" className="modal-close" aria-label="Close" onClick={() => setModalOpen(false)}>&times;</button></div><form onSubmit={save}><div className="modal-body">{!editingUser && <div className="user-role-note"><span className="badge-status badge-blue">Teacher</span><span>New accounts are created with the Teacher role and a temporary password.</span></div>}<div className="form-group"><label className="form-label" htmlFor="user-full-name">Name</label><input className="form-input" id="user-full-name" name="full_name" defaultValue={editingUser?.full_name || ''} required /></div><div className="form-group"><label className="form-label" htmlFor="user-email">Username / Email</label><input className="form-input" id="user-email" name="email" type="email" defaultValue={editingUser?.email || ''} required /></div>{editingUser?.role !== 'principal' && <div className="form-row"><div className="form-group"><label className="form-label" htmlFor="user-grade">Assigned Grade</label><select className="form-select" id="user-grade" name="grade_level" defaultValue={editingUser?.grade_level || ''}><option value="">Select grade</option>{Array.from({ length: 6 }, (_, index) => `Grade ${index + 1}`).map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="user-section">Assigned Section</label><input className="form-input" id="user-section" name="section" defaultValue={editingUser?.section || ''} /></div></div>}</div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => { setModalOpen(false); setEditingUser(null) }}>Cancel</button><button type="submit" className="btn btn-primary">{editingUser ? 'Save Changes' : 'Add User'}</button></div></form></section></>}
+    {modalOpen && <><div className="modal-overlay active" onClick={() => setModalOpen(false)} /><section className="modal active user-account-modal" role="dialog" aria-modal="true" aria-labelledby="user-account-modal-title"><div className="modal-header"><div><div className="modal-title" id="user-account-modal-title">{editingUser ? `Edit ${editingUser.role === 'principal' ? 'Principal' : 'Teacher'} Account` : 'Add User'}</div><div className="card-subtitle">Enter account details and choose the access role.</div></div><button type="button" className="modal-close" aria-label="Close" onClick={() => setModalOpen(false)}>&times;</button></div><form onSubmit={save}><div className="modal-body">
+      {!editingUser && <div className="form-group"><label className="form-label" htmlFor="user-role">Role</label><select className="form-select" id="user-role" name="role" value={newRole} onChange={(event) => { setNewRole(event.target.value); setNewGrade(''); setNewSection(''); setSelectedPupils([]) }} required><option value="teacher">Teacher</option><option value="principal" disabled={Boolean(result?.principal_exists)}>Principal{result?.principal_exists ? ' (account already exists)' : ''}</option></select></div>}
+      {editingUser && <div className="form-group"><label className="form-label">Role</label><div className="user-edit-role"><span className={`badge-status ${editingUser.role === 'principal' ? 'badge-blue' : 'badge-yellow'}`}>{editingUser.role === 'principal' ? 'Principal' : 'Teacher'}</span><span>Role changes are handled through account creation.</span></div></div>}
+      <div className="form-group"><label className="form-label" htmlFor="user-full-name">Full name</label><input className="form-input" id="user-full-name" name="full_name" defaultValue={editingUser?.full_name || ''} autoComplete="name" required /></div>
+      <div className="form-group"><label className="form-label" htmlFor="user-email">Username or email</label><input className="form-input" id="user-email" name="email" type="email" defaultValue={editingUser?.email || ''} autoComplete="email" required /></div>
+      {activeRole === 'teacher' && <><div className="form-row"><div className="form-group"><label className="form-label" htmlFor="user-grade">Assigned grade</label><select className="form-select" id="user-grade" name="grade_level" value={editingUser ? editingUser.grade_level || '' : newGrade} onChange={(event) => { if (editingUser) setEditingUser((current) => ({ ...current, grade_level: event.target.value })); else setNewGrade(event.target.value); setSelectedPupils([]) }} required><option value="">Select grade</option>{Array.from({ length: 6 }, (_, index) => `Grade ${index + 1}`).map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="user-section">Assigned section</label><input className="form-input" id="user-section" name="section" value={editingUser ? editingUser.section || '' : newSection} onChange={(event) => { if (editingUser) setEditingUser((current) => ({ ...current, section: event.target.value })); else setNewSection(event.target.value); setSelectedPupils([]) }} required /></div></div>
+        {!editingUser && <div className="form-group"><label className="form-label" htmlFor="user-pupils">Assign pupils <span className="optional-label">Optional</span></label><select className="form-select user-pupil-multiselect" id="user-pupils" name="student_ids" multiple value={selectedPupils} onChange={(event) => setSelectedPupils(Array.from(event.target.selectedOptions, (option) => option.value))} disabled={!newGrade || !newSection}>{unassignedPupils.map((student) => <option key={student.id} value={student.id}>{student.full_name} · {student.grade_level} · {student.section}</option>)}</select><div className="form-help">{!newGrade || !newSection ? 'Choose the assigned grade and section to see unassigned pupils.' : unassignedPupils.length ? 'Hold Ctrl (Windows) or Command (Mac) to select multiple pupils.' : 'No unassigned pupils match this grade and section.'}</div></div>}</>}
+      {activeRole === 'principal' && <div className="user-role-note"><span className="badge-status badge-blue">Principal</span><span>Principal accounts have school-wide access. Only one principal account is supported.</span></div>}
+      {!editingUser && <p className="form-help">A secure temporary password will be generated after the account is created.</p>}
+    </div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => { setModalOpen(false); setEditingUser(null) }}>Cancel</button><button type="submit" className="btn btn-primary">{editingUser ? 'Save Changes' : 'Create Account'}</button></div></form></section></>}
   </section>
 }
 
