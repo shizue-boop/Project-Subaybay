@@ -245,6 +245,19 @@
 .materials-guidance { margin: 18px 0 20px; }
 .materials-guidance .card-body p { margin: 0 0 12px; line-height: 1.55; }
 .materials-guidance .card-body p:last-child { margin-bottom: 0; }
+.material-detail-page { max-width: 1120px; }
+.material-detail-heading { margin-bottom: 22px; }
+.material-detail-heading .page-subtitle { margin-bottom: 0; }
+.material-detail-card .card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.material-detail-card .card-subtitle { margin-top: 3px; }
+.material-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin: 0; }
+.material-detail-item { min-width: 0; padding: 15px 0; border-bottom: 1px solid #edf1f6; }
+.material-detail-item dt, .material-detail-label { margin-bottom: 5px; color: #78869b; font-size: 12px; font-weight: 650; letter-spacing: .025em; }
+.material-detail-item dd { margin: 0; color: #24334b; font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
+.material-description { margin-top: 18px; padding: 16px 18px; border: 1px solid #e8edf5; border-radius: 11px; background: #f8fafd; }
+.material-description p { margin: 0; color: #34445b; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
+.material-detail-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.material-detail-actions .btn { min-height: 44px; padding: 11px 18px; }
 .material-guidance-note { color: #64748b; font-size: 12px; }
 .materials-grid ~ .card { display: none; }
 .material-card-tools { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -530,6 +543,10 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .search-filter-bar > .select-input { flex: 1 1 calc(50% - 6px); min-width: 0; }
   .search-filter-bar > .btn { justify-content: center; }
   .table-actions { min-width: max-content; }
+  .material-detail-card .card-header { align-items: flex-start; }
+  .material-detail-grid { gap: 0 18px; }
+  .material-detail-item { padding: 13px 0; }
+  .material-detail-actions .btn { width: 100%; justify-content: center; }
   .data-table thead th, .data-table tbody td { padding: 11px 12px; }
   .modal-header { padding: 14px 16px; }
   .modal-body { padding: 16px; }
@@ -539,6 +556,8 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .page-content { padding: 14px 10px 22px; }
   .stats-grid, .dashboard-page .stats-grid { grid-template-columns: 1fr; }
   .page-title { font-size: 22px; }
+  .material-detail-grid { grid-template-columns: 1fr; }
+  .material-detail-card .card-header { flex-direction: column; }
   .search-filter-bar > .select-input { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {

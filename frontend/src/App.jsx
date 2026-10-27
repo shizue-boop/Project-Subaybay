@@ -975,7 +975,36 @@ function MaterialDetail() {
   useEffect(() => { api(`/materials/${id}`).then(({ data }) => { if (!data) throw new Error('Learning material not found.'); setMaterial(data) }).catch((failure) => setError(failure.message)) }, [id])
   if (error) return null
   if (!material) return <PageLoading label="Loading learning material" />
-  return <><div className="page-title">{material.title}</div><div className="page-subtitle">Learning Material Details</div><div className="card"><div className="card-header"><div className="card-title">Material Information</div></div><div className="card-body">{[['Type', material.material_type], ['Grade Level', material.grade_level], ['Reading Level', material.reading_level], ['Language', material.language], ['Alignment', material.alignment_part], ['Skill Focus', material.skill_focus], ['Uploaded By', material.uploader_name], ['Description', material.description]].map(([label, value]) => <p key={label}><strong>{label}:</strong> {value || '—'}</p>)}<button className="btn btn-primary" onClick={() => openApiFile(`/materials/${material.id}/file` ).catch((failure) => setError(failure.message))}>Download Material</button></div></div></>
+  const details = [['Material type', material.material_type], ['Grade level', material.grade_level], ['Reading level', material.reading_level], ['Language', material.language], ['Alignment', material.alignment_part], ['Skill focus', material.skill_focus], ['Uploaded by', material.uploader_name]]
+  return <section className="material-detail-page">
+    <div className="material-detail-heading">
+      <div className="page-title">{material.title}</div>
+      <div className="page-subtitle">Learning Material Details</div>
+    </div>
+    <div className="card material-detail-card">
+      <div className="card-header">
+        <div>
+          <div className="card-title">Material Information</div>
+          <div className="card-subtitle">Review the material details and download the uploaded file.</div>
+        </div>
+        {material.material_type && <span className="badge-status badge-blue">{material.material_type}</span>}
+      </div>
+      <div className="card-body">
+        <dl className="material-detail-grid">
+          {details.map(([label, value]) => <div className="material-detail-item" key={label}>
+            <dt>{label}</dt><dd>{value || '—'}</dd>
+          </div>)}
+        </dl>
+        <div className="material-description">
+          <div className="material-detail-label">Description</div>
+          <p>{material.description || 'No description provided.'}</p>
+        </div>
+        <div className="material-detail-actions">
+          <button className="btn btn-primary" onClick={() => openApiFile(`/materials/${material.id}/file`).catch((failure) => setError(failure.message))}><i className="fa-solid fa-download" /> Download Material</button>
+        </div>
+      </div>
+    </div>
+  </section>
 }
 
 function TeacherProfile() {
