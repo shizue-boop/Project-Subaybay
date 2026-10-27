@@ -18,6 +18,11 @@
 .registration-content { width: min(100%, 560px); }
 .registration-card { padding: 34px 40px; border: 1px solid #e7ebf2; border-radius: 18px; background: #fff; box-shadow: 0 25px 55px -30px rgba(15,23,42,.28), 0 2px 8px rgba(15,23,42,.05); }
 .registration-card h2 { margin: 4px 0 20px; font-size: 23px; }
+.login-registration-content { width: min(100%, 560px); }
+.login-registration-card h2 { margin-bottom: 8px; }
+.login-registration-subtitle { margin: 0 0 26px; color: #64748b; font-size: 14px; }
+.login-registration-card .btn-login { gap: 8px; min-height: 48px; margin-top: 4px; }
+.login-registration-card .btn-login:disabled { opacity: .7; cursor: wait; }
 .registration-kicker { margin: 0 0 20px; color: #64748b; font-size: 14px; font-weight: 600; }
 .role-options { display: grid; gap: 12px; margin-bottom: 24px; }
 .role-option { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 92px; box-sizing: border-box; padding: 16px 70px; border: 1.5px solid #e2e8f0; border-radius: 14px; text-align: center; background: #fff; cursor: pointer; transition: border-color .15s, box-shadow .15s; }

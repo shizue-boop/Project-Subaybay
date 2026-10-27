@@ -105,17 +105,26 @@ function Login() {
       else setError('Unable to reach the sign-in service. Check that the backend and database are running, then try again.')
     } finally { setBusy(false) }
   }
-  return <div className="login-page"><div className="login-container">
-    <div className="login-left"><div className="logo-icon"><i className="fa-solid fa-book-open-reader" /></div><h1>Project Subaybay</h1><p>“Lahat ng bata, makababasa.”</p></div>
-    <div className="login-right"><h2>Welcome Back!</h2><p className="subtitle">Sign in to your account to continue</p>
-
-      <form className="login-form" onSubmit={submit}>
-        <div className="form-group"><label className="form-label" htmlFor="email">Email Address</label><input id="email" type="email" name="email" className="form-input" placeholder="Enter your email" required /></div>
-        <div className="form-group"><label className="form-label" htmlFor="password">Password</label><input id="password" type="password" name="password" className="form-input" placeholder="Enter your password" required /></div>
-        <button className="btn-login" type="submit" disabled={busy}><i className="fa-solid fa-arrow-right-to-bracket" /> {busy ? 'Signing In…' : 'Sign In'}</button>
-      </form><div className="login-footer">Don't have an account? <Link to="/Registration.php">Register here</Link></div>
-    </div>
-  </div></div>
+  return <div className="registration-page login-registration-page">
+    <aside className="registration-aside">
+      <Link to="/index.php" className="registration-brand"><span className="registration-brand-icon"><i className="fa-solid fa-book-open-reader" /></span><span><b>Project Subaybay</b><small>Reading Progress Monitoring System</small></span></Link>
+      <div className="registration-aside-copy"><h1>Lahat ng bata, makababasa.</h1><p>Track reading progress and support every pupil's path to reading.</p><div className="registration-aside-stat"><i className="fa-solid fa-book-open" /><span>Reading progress monitoring<br /><b>Cabilang Baybay Elementary School</b></span></div></div>
+      <small className="registration-copyright">© 2025 Project Subaybay — Cabilang Baybay Elementary School</small>
+    </aside>
+    <main className="registration-main"><div className="registration-content login-registration-content">
+      <section className="registration-card login-registration-card">
+        <p className="registration-kicker">Cabilang Baybay Elementary School</p>
+        <h2>Welcome Back!</h2>
+        <p className="login-registration-subtitle">Sign in to your account to continue</p>
+        <form className="registration-fields" onSubmit={submit}>
+          <div className="form-group"><label className="form-label" htmlFor="email">Email Address</label><input id="email" type="email" name="email" className="form-input" placeholder="Enter your email" autoComplete="email" required /></div>
+          <div className="form-group"><label className="form-label" htmlFor="password">Password</label><input id="password" type="password" name="password" className="form-input" placeholder="Enter your password" autoComplete="current-password" required /></div>
+          <button className="btn-login" type="submit" disabled={busy}><i className="fa-solid fa-arrow-right-to-bracket" /> {busy ? 'Signing In…' : 'Sign In'}</button>
+        </form>
+        <div className="login-footer">Don't have an account? <Link to="/Registration.php">Register here</Link></div>
+      </section>
+    </div></main>
+  </div>
 }
 
 function Registration() {
