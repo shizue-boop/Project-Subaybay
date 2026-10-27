@@ -561,7 +561,77 @@ const featureConfig = {
   teachers: { title: 'Teacher Accounts', subtitle: 'Manage teacher accounts and assignments', endpoint: '/teachers', rows: (r) => r.teachers || [], cols: [['full_name', 'Teacher'], ['email', 'Email'], ['grade_level', 'Grade'], ['section', 'Section'], ['student_count', 'Pupils'], ['status', 'Status']], create: true, fields: [['full_name', 'Name', 'text'], ['email', 'Email', 'email'], ['section', 'Grade / Section', 'text'], ['grade_level', 'Grade Level', 'text']] },
 }
 
+function ReportsPage({ user }) {
+  const [students, setStudents] = useState([])
+  const [reports, setReports] = useState([])
+  const [criteriaOpen, setCriteriaOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [error, setError] = useToastValue('error')
+  const [notice, setNotice] = useToastValue('success')
+  const [criteria, setCriteria] = useState(() => {
+    const end = new Date()
+    const start = new Date(end)
+    start.setDate(start.getDate() - 30)
+    const dateValue = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    return { report_type: 'progress', start_date: dateValue(start), end_date: dateValue(end), grade_level: '', section: '', student_id: '' }
+  })
+  async function load() {
+    const [studentResult, reportResult] = await Promise.all([api('/students?options=1'), api('/reports?page=1&per_page=25')])
+    setStudents(studentResult.data || [])
+    setReports(reportResult.data || [])
+  }
+  useEffect(() => { load().catch((failure) => setError(failure.message)).finally(() => setLoading(false)) }, [])
+  const grades = [...new Set(students.map((student) => student.grade_level).filter(Boolean))].sort()
+  const sections = [...new Set(students.filter((student) => !criteria.grade_level || student.grade_level === criteria.grade_level).map((student) => student.section).filter(Boolean))].sort()
+  const pupils = students.filter((student) => (!criteria.grade_level || student.grade_level === criteria.grade_level) && (!criteria.section || student.section === criteria.section))
+  function updateCriteria(key, value) {
+    setCriteria((current) => ({ ...current, [key]: value, ...(key === 'grade_level' ? { section: '', student_id: '' } : {}), ...(key === 'section' ? { student_id: '' } : {}) }))
+  }
+  async function generate(event) {
+    event.preventDefault()
+    setGenerating(true)
+    try {
+      const filters = criteria.report_type === 'activity' ? {} : { grade_level: criteria.grade_level, section: criteria.section, student_id: criteria.student_id }
+      const result = await api('/reports', { method: 'POST', body: { report_type: criteria.report_type, start_date: criteria.start_date, end_date: criteria.end_date, ...filters } })
+      setPreview({ ...result.preview, report_id: result.data?.id, file_path: result.data?.file_path })
+      setCriteriaOpen(false)
+      setNotice(result.message || 'Report generated successfully.')
+      await load()
+    } catch (failure) { setError(failure.message) }
+    finally { setGenerating(false) }
+  }
+  const reportLabel = (type) => ({ progress: 'Reading Progress Report', attendance: 'Attendance Report', activity: 'System Activity Report' })[type] || type
+  const formatDate = (value) => value ? new Date(value).toLocaleString() : '—'
+  const download = (report) => downloadApiFile(`/reports/${report.id || report.report_id}/download`, report.file_path?.split(/[\\/]/).pop() || `report-${report.id || report.report_id}.html`).catch((failure) => setError(failure.message))
+  return <section className="reports-page">
+    <div className="page-title">Reports</div>
+    <div className="page-subtitle">Generate reports from saved pupil assessments and attendance records.</div>
+    <div className="reports-toolbar"><div><h2>Report criteria</h2><p>Choose the report and filters, then generate results from saved records.</p></div><button type="button" className="btn btn-primary" onClick={() => { setError(''); setCriteriaOpen(true) }}><i className="fa-solid fa-file-circle-plus" /> Generate Report</button></div>
+    {preview && <section className="card report-preview-card">
+      <div className="card-header"><div><div className="card-title">{preview.title}</div><div className="card-subtitle">Generated {formatDate(preview.generated_at)}</div></div><button type="button" className="btn btn-secondary" onClick={() => download(preview)}><i className="fa-solid fa-download" /> Export Report</button></div>
+      <div className="card-body">
+        <div className="report-summary-grid"><div className="report-summary-item"><span>Report</span><strong>{reportLabel(preview.filters?.report_type)}</strong></div><div className="report-summary-item"><span>Date generated</span><strong>{formatDate(preview.generated_at)}</strong></div><div className="report-summary-item"><span>Total records</span><strong>{preview.total_records}</strong></div></div>
+        <div className="report-filters-used"><strong>Filters used</strong>{(preview.filter_summary || []).map((filter) => <span className="badge-status badge-blue" key={filter}>{filter}</span>)}</div>
+        <div className="table-responsive"><table className="data-table report-results-table"><thead><tr>{preview.headers?.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{preview.rows?.length ? preview.rows.map((row, index) => <tr key={`${index}-${row[0]}`}>{row.map((value, cellIndex) => <td key={`${index}-${cellIndex}`}>{value ?? '—'}</td>)}</tr>) : <tr><td colSpan={preview.headers?.length || 1} className="empty-state">No saved records matched these criteria.</td></tr>}</tbody></table></div>
+      </div>
+    </section>}
+    <div className="card reports-history-card"><div className="card-header"><div className="card-title">Generated Reports</div><span className="record-count">{reports.length} reports</span></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table"><thead><tr><th>Report</th><th>Type</th><th>Generated By</th><th>Date Generated</th><th>Status</th><th>Action</th></tr></thead><tbody>{reports.map((report) => <tr key={report.id}><td>{report.report_title}</td><td>{reportLabel(report.report_type)}</td><td>{report.generator_name || '—'}</td><td>{formatDate(report.generated_date)}</td><td><span className="badge-status badge-green">{report.status}</span></td><td><button type="button" className="btn btn-sm btn-secondary" onClick={() => download(report)}><i className="fa-solid fa-download" /> Export</button></td></tr>)}{!reports.length && <tr><td colSpan="6" className="empty-state">{loading ? 'Loading generated reports…' : 'No reports have been generated yet.'}</td></tr>}</tbody></table></div></div></div>
+    {criteriaOpen && <><div className="modal-overlay active" onClick={() => !generating && setCriteriaOpen(false)} /><section className="modal active report-criteria-modal" role="dialog" aria-modal="true" aria-labelledby="report-criteria-title"><div className="modal-header"><div><div className="modal-title" id="report-criteria-title">Generate Report</div><div className="card-subtitle">Select saved records to include in the report.</div></div><button className="modal-close" type="button" disabled={generating} onClick={() => setCriteriaOpen(false)}>&times;</button></div><form onSubmit={generate}><div className="modal-body">
+      <div className="form-group"><label className="form-label" htmlFor="report-type">Report type</label><select className="form-select" id="report-type" value={criteria.report_type} onChange={(event) => updateCriteria('report_type', event.target.value)}><option value="progress">Reading Progress Report</option><option value="attendance">Attendance Report</option><option value="activity">System Activity Report</option></select></div>
+      <div className="form-row"><div className="form-group"><label className="form-label" htmlFor="report-start-date">Start date</label><input className="form-input" id="report-start-date" type="date" value={criteria.start_date} max={criteria.end_date} onChange={(event) => updateCriteria('start_date', event.target.value)} required /></div><div className="form-group"><label className="form-label" htmlFor="report-end-date">End date</label><input className="form-input" id="report-end-date" type="date" value={criteria.end_date} min={criteria.start_date} onChange={(event) => updateCriteria('end_date', event.target.value)} required /></div></div>
+      {criteria.report_type === 'activity' ? <p className="form-help">Activity reports show system-wide module totals for the selected date range.</p> : <><div className="form-row"><div className="form-group"><label className="form-label" htmlFor="report-grade">Grade</label><select className="form-select" id="report-grade" value={criteria.grade_level} onChange={(event) => updateCriteria('grade_level', event.target.value)}><option value="">All grades</option>{grades.map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="report-section">Section</label><select className="form-select" id="report-section" value={criteria.section} onChange={(event) => updateCriteria('section', event.target.value)}><option value="">All sections</option>{sections.map((section) => <option key={section}>{section}</option>)}</select></div></div><div className="form-group"><label className="form-label" htmlFor="report-pupil">Pupil</label><select className="form-select" id="report-pupil" value={criteria.student_id} onChange={(event) => updateCriteria('student_id', event.target.value)}><option value="">All pupils</option>{pupils.map((student) => <option key={student.id} value={student.id}>{student.full_name} · {student.grade_level} · {student.section}</option>)}</select></div></>}
+    </div><div className="modal-footer"><button type="button" className="btn btn-secondary" disabled={generating} onClick={() => setCriteriaOpen(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={generating}><i className={`fa-solid ${generating ? 'fa-spinner fa-spin' : 'fa-chart-column'}`} /> {generating ? 'Generating…' : 'Generate Report'}</button></div></form></section></>}
+  </section>
+}
+
 function FeaturePage({ kind, user }) {
+  if (kind === 'reports') return <ReportsPage user={user} />
+  return <GenericFeaturePage kind={kind} user={user} />
+}
+
+function GenericFeaturePage({ kind, user }) {
   const config = featureConfig[kind]
   const [result, setResult] = useState(null)
   const [students, setStudents] = useState([])
