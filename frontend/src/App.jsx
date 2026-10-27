@@ -306,7 +306,7 @@ function Shell({ user, children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState(null)
-  const links = user.role === 'teacher' ? teacherLinks : adminLinks
+  const links = user.role === 'teacher' ? teacherLinks : user.role === 'coordinator' ? adminLinks : adminLinks.filter(([path]) => path !== 'teacher_accounts.php')
   async function logout() { try { await api('/auth/logout', { method: 'POST' }) } catch {} clearToken(); window.dispatchEvent(new Event('subaybay:auth-changed')); navigate('/index.php') }
   async function toggleNotifications() {
     const opening = !notificationsOpen
@@ -623,6 +623,68 @@ function ReportsPage({ user }) {
       <div className="form-row"><div className="form-group"><label className="form-label" htmlFor="report-start-date">Start date</label><input className="form-input" id="report-start-date" type="date" value={criteria.start_date} max={criteria.end_date} onChange={(event) => updateCriteria('start_date', event.target.value)} required /></div><div className="form-group"><label className="form-label" htmlFor="report-end-date">End date</label><input className="form-input" id="report-end-date" type="date" value={criteria.end_date} min={criteria.start_date} onChange={(event) => updateCriteria('end_date', event.target.value)} required /></div></div>
       {criteria.report_type === 'activity' ? <p className="form-help">Activity reports show system-wide module totals for the selected date range.</p> : <><div className="form-row"><div className="form-group"><label className="form-label" htmlFor="report-grade">Grade</label><select className="form-select" id="report-grade" value={criteria.grade_level} onChange={(event) => updateCriteria('grade_level', event.target.value)}><option value="">All grades</option>{grades.map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="report-section">Section</label><select className="form-select" id="report-section" value={criteria.section} onChange={(event) => updateCriteria('section', event.target.value)}><option value="">All sections</option>{sections.map((section) => <option key={section}>{section}</option>)}</select></div></div><div className="form-group"><label className="form-label" htmlFor="report-pupil">Pupil</label><select className="form-select" id="report-pupil" value={criteria.student_id} onChange={(event) => updateCriteria('student_id', event.target.value)}><option value="">All pupils</option>{pupils.map((student) => <option key={student.id} value={student.id}>{student.full_name} · {student.grade_level} · {student.section}</option>)}</select></div></>}
     </div><div className="modal-footer"><button type="button" className="btn btn-secondary" disabled={generating} onClick={() => setCriteriaOpen(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={generating}><i className={`fa-solid ${generating ? 'fa-spinner fa-spin' : 'fa-chart-column'}`} /> {generating ? 'Generating…' : 'Generate Report'}</button></div></form></section></>}
+  </section>
+}
+
+function UserManagementPage({ user }) {
+  const [result, setResult] = useState(null)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [page, setPage] = useState(1)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [error, setError] = useToastValue('error')
+  const [notice, setNotice] = useToastValue('success')
+  useEffect(() => { setPage(1) }, [search, roleFilter, statusFilter])
+  useEffect(() => {
+    let active = true
+    const params = new URLSearchParams({ page: String(page), per_page: '25' })
+    if (search.trim()) params.set('search', search.trim())
+    if (roleFilter !== 'all') params.set('role', roleFilter)
+    if (statusFilter !== 'all') params.set('status', statusFilter)
+    setLoading(true)
+    api(`/users?${params}`).then((data) => { if (active) { setResult(data); setError('') } }).catch((failure) => { if (active) setError(failure.message) }).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [search, roleFilter, statusFilter, page, reloadKey])
+  async function save(event) {
+    event.preventDefault()
+    const body = Object.fromEntries(new FormData(event.currentTarget))
+    try {
+      const response = editingUser
+        ? await api(editingUser.role === 'principal' ? '/teachers/principal' : `/teachers/${editingUser.id}`, { method: 'PUT', body })
+        : await api('/teachers', { method: 'POST', body })
+      setNotice(`${response.message}${response.temporary_password ? ` Temporary password: ${response.temporary_password}` : ''}`)
+      setModalOpen(false); setEditingUser(null); setReloadKey((value) => value + 1)
+    } catch (failure) { setError(Object.values(failure.errors || {}).flat().join(' ') || failure.message) }
+  }
+  async function manageAccount(target, action) {
+    const isActive = target.status === 'active'
+    const isReset = action === 'reset-password'
+    const verb = isReset ? 'reset the password for' : isActive ? 'deactivate' : 'activate'
+    const confirmed = await requestConfirmation({ title: isReset ? 'Reset account password?' : `${isActive ? 'Deactivate' : 'Activate'} account?`, message: `Are you sure you want to ${verb} ${target.full_name}'s account?`, confirmLabel: isReset ? 'Reset Password' : isActive ? 'Deactivate' : 'Activate', tone: isActive && !isReset ? 'danger' : 'primary' })
+    if (!confirmed) return
+    try {
+      const endpoint = target.role === 'principal' ? `/teachers/principal/${action}` : `/teachers/${target.id}/${action}`
+      const response = await api(endpoint, { method: 'POST' })
+      setNotice(response.message); setReloadKey((value) => value + 1)
+    } catch (failure) { setError(failure.message) }
+  }
+  if (user.role !== 'coordinator') return <Navigate to="/dashboard.php" replace />
+  const rows = result?.data || []
+  return <section className="user-management-page">
+    <div className="page-title">User Management</div>
+    <div className="page-subtitle">Manage staff accounts and their authorized pupil scope.</div>
+    <div className="search-filter-bar user-management-filters">
+      <input className="search-input" type="search" placeholder="Search by name or username..." value={search} onChange={(event) => setSearch(event.target.value)} />
+      <select className="select-input" aria-label="Filter by role" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}><option value="all">All Roles</option><option value="teacher">Teacher</option><option value="principal">Principal</option></select>
+      <select className="select-input" aria-label="Filter by account status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+      <button type="button" className="btn btn-primary" onClick={() => { setEditingUser(null); setError(''); setModalOpen(true) }}><i className="fa-solid fa-user-plus" /> Add User</button>
+    </div>
+    <div className="card"><div className="card-header"><div className="card-title">School Personnel</div><span className="record-count">{result?.pagination?.total ?? rows.length} accounts</span></div><div className="card-body" style={{ padding: 0 }}><div className="table-responsive"><table className="data-table user-management-table"><thead><tr><th>Name</th><th>Username / Email</th><th>Role</th><th>Assigned Grade / Section</th><th>Account Status</th><th>Action</th></tr></thead><tbody>{rows.map((account) => <tr key={account.id}><td className="user-management-name">{account.full_name}</td><td>{account.email}</td><td><span className={`badge-status ${account.role === 'principal' ? 'badge-blue' : 'badge-yellow'}`}>{account.role === 'principal' ? 'Principal' : 'Teacher'}</span></td><td>{account.grade_level || account.section ? `${account.grade_level || '—'}${account.section ? ` / ${account.section}` : ''}` : '—'}</td><td><span className={`badge-status ${account.status === 'active' ? 'badge-green' : 'badge-red'}`}>{account.status === 'active' ? 'Active' : 'Inactive'}</span></td><td><div className="table-actions"><button type="button" className="btn btn-sm btn-secondary" onClick={() => { setEditingUser(account); setError(''); setModalOpen(true) }}><i className="fa-solid fa-pen" /> Edit</button><button type="button" className={`btn btn-sm ${account.status === 'active' ? 'btn-danger' : 'btn-primary'}`} onClick={() => manageAccount(account, 'toggle')}><i className="fa-solid fa-power-off" /> {account.status === 'active' ? 'Deactivate' : 'Activate'}</button><button type="button" className="btn btn-sm btn-secondary" onClick={() => manageAccount(account, 'reset-password')}><i className="fa-solid fa-key" /> Reset Password</button></div></td></tr>)}{!rows.length && <tr><td colSpan="6" className="empty-state">{loading ? 'Loading accounts…' : 'No accounts match these filters.'}</td></tr>}</tbody></table></div><PaginationControls pagination={result?.pagination} onPageChange={setPage} /></div></div>
+    {modalOpen && <><div className="modal-overlay active" onClick={() => setModalOpen(false)} /><section className="modal active user-account-modal" role="dialog" aria-modal="true" aria-labelledby="user-account-modal-title"><div className="modal-header"><div className="modal-title" id="user-account-modal-title">{editingUser ? `Edit ${editingUser.role === 'principal' ? 'Principal' : 'Teacher'} Account` : 'Add Teacher Account'}</div><button type="button" className="modal-close" aria-label="Close" onClick={() => setModalOpen(false)}>&times;</button></div><form onSubmit={save}><div className="modal-body">{!editingUser && <div className="user-role-note"><span className="badge-status badge-blue">Teacher</span><span>New accounts are created with the Teacher role and a temporary password.</span></div>}<div className="form-group"><label className="form-label" htmlFor="user-full-name">Name</label><input className="form-input" id="user-full-name" name="full_name" defaultValue={editingUser?.full_name || ''} required /></div><div className="form-group"><label className="form-label" htmlFor="user-email">Username / Email</label><input className="form-input" id="user-email" name="email" type="email" defaultValue={editingUser?.email || ''} required /></div>{editingUser?.role !== 'principal' && <div className="form-row"><div className="form-group"><label className="form-label" htmlFor="user-grade">Assigned Grade</label><select className="form-select" id="user-grade" name="grade_level" defaultValue={editingUser?.grade_level || ''}><option value="">Select grade</option>{Array.from({ length: 6 }, (_, index) => `Grade ${index + 1}`).map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="user-section">Assigned Section</label><input className="form-input" id="user-section" name="section" defaultValue={editingUser?.section || ''} /></div></div>}</div><div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={() => { setModalOpen(false); setEditingUser(null) }}>Cancel</button><button type="submit" className="btn btn-primary">{editingUser ? 'Save Changes' : 'Add User'}</button></div></form></section></>}
   </section>
 }
 
@@ -1104,8 +1166,9 @@ function AppRoutes() {
       ['/progress_update.php', 'progress'], ['/progress_updates.php', 'progress'],
       ['/remedial_sessions.php', 'sessions'], ['/interventions.php', 'sessions'],
       ['/remedial_attendance.php', 'attendance'], ['/learning_materials.php', 'materials'], ['/teacher_learning_materials.php', 'materials'],
-      ['/reports.php', 'reports'], ['/grade_categories.php', 'categories'], ['/schedule.php', 'schedule'], ['/teacher_accounts.php', 'teachers'],
+      ['/reports.php', 'reports'], ['/grade_categories.php', 'categories'], ['/schedule.php', 'schedule'],
     ].map(([path, kind]) => <Route key={path} path={path} element={<Protected>{(user) => <Shell user={user}>{kind === 'attendance' ? <AttendancePage user={user} /> : <FeaturePage kind={kind} user={user} />}</Shell>}</Protected>} />)}
+    <Route path="/teacher_accounts.php" element={<Protected>{(user) => user.role === 'coordinator' ? <Shell user={user}><UserManagementPage user={user} /></Shell> : <Navigate to="/dashboard.php" replace />}</Protected>} />
     <Route path="/endorsement_detail.php" element={<Protected>{(user) => <Shell user={user}><EndorsementDetail /></Shell>}</Protected>} />
     <Route path="/settings.php" element={<Protected>{(user) => <Shell user={user}><SettingsPage user={user} /></Shell>}</Protected>} />
     <Route path="/material_detail.php" element={<Protected>{(user) => <Shell user={user}><MaterialDetail /></Shell>}</Protected>} />

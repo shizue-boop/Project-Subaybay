@@ -246,6 +246,17 @@
 .materials-guidance .card-body p { margin: 0 0 12px; line-height: 1.55; }
 .materials-guidance .card-body p:last-child { margin-bottom: 0; }
 .reports-page { max-width: 1380px; }
+.user-management-page { max-width: 1440px; }
+.user-management-filters { align-items: center; }
+.user-management-filters .search-input { flex: 1 1 280px; max-width: 460px; }
+.user-management-filters .select-input { flex: 0 1 180px; }
+.user-management-filters > .btn { margin-left: auto; }
+.user-management-table { min-width: 920px; }
+.user-management-name { color: #24334b !important; font-weight: 650; }
+.user-management-table .table-actions { flex-wrap: nowrap; }
+.user-account-modal { width: min(600px, calc(100vw - 32px)); max-height: min(88vh, 820px); overflow-y: auto; }
+.user-role-note { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 14px; border: 1px solid #dce7fb; border-radius: 10px; color: #53647c; background: #f5f8ff; font-size: 13px; }
+.user-account-modal .form-row { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
 .reports-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 0 0 20px; padding: 18px 20px; border: 1px solid #e3eaf4; border-radius: 13px; background: #fff; box-shadow: 0 2px 8px rgba(22,40,68,.035); }
 .reports-toolbar h2 { margin: 0; color: #24334b; font-size: 16px; }
 .reports-toolbar p { margin: 4px 0 0; color: #78869b; font-size: 13px; }
@@ -571,6 +582,11 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .report-preview-card .card-header > .btn { width: 100%; justify-content: center; }
   .report-summary-grid { grid-template-columns: 1fr; }
   .report-criteria-modal .form-row { grid-template-columns: 1fr; }
+  .user-management-filters { align-items: stretch; }
+  .user-management-filters .search-input, .user-management-filters .select-input { flex: 1 1 100%; max-width: none; width: 100%; }
+  .user-management-filters > .btn { width: 100%; justify-content: center; margin-left: 0; }
+  .user-management-table .table-actions { min-width: max-content; }
+  .user-account-modal .form-row { grid-template-columns: 1fr; gap: 0; }
   .data-table thead th, .data-table tbody td { padding: 11px 12px; }
   .modal-header { padding: 14px 16px; }
   .modal-body { padding: 16px; }
