@@ -689,7 +689,8 @@ function UserManagementPage({ user }) {
     setError(''); setEditLoading(true)
     try {
       if (account.role === 'teacher') {
-        const profile = await api(`/teachers/${account.id}/profile`)
+        const [profile, roster] = await Promise.all([api(`/teachers/${account.id}/profile`), api('/students?options=1')])
+        setStudents(roster.data || [])
         const assignedIds = (profile.students || []).filter((student) => student.grade_level === account.grade_level && student.section === account.section).map((student) => String(student.id))
         setEditingUser(account); setNewGrade(account.grade_level || ''); setNewSection(account.section || ''); setSelectedPupils(assignedIds)
       } else { setEditingUser(account); setSelectedPupils([]) }
