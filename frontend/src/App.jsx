@@ -315,7 +315,7 @@ function Shell({ user, children }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState(null)
-  const links = user.role === 'teacher' ? teacherLinks : user.role === 'coordinator' ? adminLinks.filter(([path]) => path !== 'teacher_accounts.php') : adminLinks
+  const links = user.role === 'teacher' ? teacherLinks : adminLinks
   const routeStackKey = `subaybay:route-stack:${user.id || user.email || user.role}`
   const isDashboard = location.pathname === '/dashboard.php' || location.pathname === '/teacher_dashboard.php'
   function goBack() {
@@ -783,7 +783,7 @@ function UserManagementPage({ user }) {
     } catch (failure) { setError(failure.message) }
     finally { setEditLoading(false) }
   }
-  if (user.role !== 'principal') return <Navigate to="/dashboard.php" replace />
+  if (!['principal', 'coordinator'].includes(user.role)) return <Navigate to="/dashboard.php" replace />
   const rows = result?.data || []
   const activeRole = editingUser?.role || newRole
   const staffName = splitStaffName(editingUser?.full_name || '')
@@ -1271,7 +1271,7 @@ function AppRoutes() {
       ['/remedial_attendance.php', 'attendance'], ['/learning_materials.php', 'materials'], ['/teacher_learning_materials.php', 'materials'],
       ['/reports.php', 'reports'], ['/grade_categories.php', 'categories'], ['/schedule.php', 'schedule'],
     ].map(([path, kind]) => <Route key={path} path={path} element={<Protected>{(user) => <Shell user={user}>{kind === 'attendance' ? <AttendancePage user={user} /> : <FeaturePage kind={kind} user={user} />}</Shell>}</Protected>} />)}
-    <Route path="/teacher_accounts.php" element={<Protected>{(user) => user.role === 'principal' ? <Shell user={user}><UserManagementPage user={user} /></Shell> : <Navigate to="/dashboard.php" replace />}</Protected>} />
+    <Route path="/teacher_accounts.php" element={<Protected>{(user) => ['principal', 'coordinator'].includes(user.role) ? <Shell user={user}><UserManagementPage user={user} /></Shell> : <Navigate to="/dashboard.php" replace />}</Protected>} />
     <Route path="/endorsement_detail.php" element={<Protected>{(user) => <Shell user={user}><EndorsementDetail /></Shell>}</Protected>} />
     <Route path="/settings.php" element={<Protected>{(user) => <Shell user={user}><SettingsPage user={user} /></Shell>}</Protected>} />
     <Route path="/material_detail.php" element={<Protected>{(user) => <Shell user={user}><MaterialDetail /></Shell>}</Protected>} />
