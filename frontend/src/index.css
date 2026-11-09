@@ -175,6 +175,8 @@
 .dashboard-charts .card-subtitle { font-size: 13px; }
 .dashboard-pie-layout { display: grid; grid-template-columns: minmax(175px, 235px) minmax(0, 1fr); align-items: center; gap: 24px; min-height: 280px; }
 .dashboard-pie-chart { width: min(100%, 235px); justify-self: center; }
+.dashboard-pie-hole { fill: #fff; }
+.dashboard-pie-center-label { fill: #64748b; font-size: 12px; font-weight: 600; }
 .dashboard-pie-legend { display: grid; gap: 12px; }
 .dashboard-pie-legend-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 38px; align-items: center; gap: 8px; color: #334155; font-size: 12px; }
 .dashboard-pie-swatch { width: 12px; height: 12px; border-radius: 3px; }
