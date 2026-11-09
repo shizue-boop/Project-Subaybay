@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="badge" style="background:#EA9A1D">P</div>
                                 <div>
                                     <div class="text-[15px] font-semibold mb-0.5">Principal</div>
-                                    <div class="text-[13.5px] leading-snug" style="color:var(--muted)">School administrator with view-only access and full reports.</div>
+                                    <div class="text-[13.5px] leading-snug" style="color:var(--muted)">School administrator with personnel-management access and full reports.</div>
                                 </div>
                             </div>
                             <div class="role-card flex items-start gap-4 px-5 py-4" data-role="coordinator" onclick="selectRole('coordinator')">
