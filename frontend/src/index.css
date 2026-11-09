@@ -281,6 +281,7 @@
 .user-account-modal { width: min(600px, calc(100vw - 32px)); max-height: min(88vh, 820px); overflow-y: auto; }
 .user-role-note { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 14px; border: 1px solid #dce7fb; border-radius: 10px; color: #53647c; background: #f5f8ff; font-size: 13px; }
 .user-account-modal .form-row { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.user-name-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(90px, .55fr); gap: 14px; }
 .user-edit-role { display: flex; align-items: center; gap: 10px; min-height: 42px; color: #78869b; font-size: 13px; }
 .optional-label { margin-left: 5px; color: #8895a8; font-size: 11px; font-weight: 500; }
 .user-pupil-multiselect { min-height: 126px; padding: 7px; }
@@ -623,6 +624,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .user-management-filters > .btn { width: 100%; justify-content: center; margin-left: 0; }
   .user-management-table .table-actions { min-width: max-content; }
   .user-account-modal .form-row { grid-template-columns: 1fr; gap: 0; }
+  .user-name-fields { grid-template-columns: 1fr; gap: 0; }
   .user-created-credentials { align-items: stretch; flex-direction: column; }
   .data-table thead th, .data-table tbody td { padding: 11px 12px; }
   .modal-header { padding: 14px 16px; }

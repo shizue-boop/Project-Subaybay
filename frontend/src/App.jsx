@@ -685,6 +685,17 @@ function ReportsPage({ user }) {
   </section>
 }
 
+function splitStaffName(fullName = '') {
+  const parts = String(fullName).trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return { first_name: '', last_name: '', middle_initial: '' }
+  const middle = parts.length > 2 ? parts.slice(1, -1).join(' ') : ''
+  return {
+    first_name: parts[0],
+    last_name: parts.length > 1 ? parts.at(-1) : '',
+    middle_initial: middle.replace(/[^\p{L}]/gu, '').charAt(0).toUpperCase(),
+  }
+}
+
 function UserManagementPage({ user }) {
   const [result, setResult] = useState(null)
   const [search, setSearch] = useState('')
@@ -720,6 +731,9 @@ function UserManagementPage({ user }) {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
     const body = Object.fromEntries(formData)
+    const fullName = [body.first_name?.trim(), body.middle_initial?.trim() ? `${body.middle_initial.trim().charAt(0).toUpperCase()}.` : '', body.last_name?.trim()].filter(Boolean).join(' ')
+    body.full_name = fullName
+    delete body.first_name; delete body.last_name; delete body.middle_initial
     if (editingUser?.role === 'teacher') body.student_ids = formData.getAll('student_ids')
     try {
       const response = editingUser
@@ -751,7 +765,7 @@ function UserManagementPage({ user }) {
         const [profile, roster] = await Promise.all([api(`/teachers/${account.id}/profile`), api('/students?options=1')])
         setStudents(roster.data || [])
         const assignedIds = (profile.students || []).filter((student) => student.grade_level === account.grade_level && student.section === account.section).map((student) => String(student.id))
-        setEditingUser(account); setNewGrade(account.grade_level || ''); setNewSection(account.section || ''); setSelectedPupils(assignedIds)
+        setEditingUser(account); setNewGrade(account.grade_level || ''); setNewSection(['Alvarez', 'Aguinaldo', 'Calderon'].includes(account.section) ? account.section : ''); setSelectedPupils(assignedIds)
       } else { setEditingUser(account); setNewGrade(''); setNewSection(''); setSelectedPupils([]) }
       setModalOpen(true)
     } catch (failure) { setError(failure.message) }
@@ -760,6 +774,7 @@ function UserManagementPage({ user }) {
   if (user.role !== 'principal') return <Navigate to="/dashboard.php" replace />
   const rows = result?.data || []
   const activeRole = editingUser?.role || newRole
+  const staffName = splitStaffName(editingUser?.full_name || '')
   const pupilChoices = students.filter((student) => ((editingUser?.role === 'teacher' && Number(student.teacher_id) === Number(editingUser.id)) || !student.teacher_id) && (!newGrade || student.grade_level === newGrade) && (!newSection || student.section === newSection))
   return <section className="user-management-page">
     <div className="page-title">User Management</div>
@@ -775,9 +790,9 @@ function UserManagementPage({ user }) {
     {modalOpen && <><div className="modal-overlay active" onClick={() => setModalOpen(false)} /><section className="modal active user-account-modal" role="dialog" aria-modal="true" aria-labelledby="user-account-modal-title"><div className="modal-header"><div><div className="modal-title" id="user-account-modal-title">{editingUser ? `Edit ${editingUser.role === 'coordinator' ? 'Reading Coordinator' : 'Teacher'} Account` : 'Add User'}</div><div className="card-subtitle">Enter account details and assign the staff role.</div></div><button type="button" className="modal-close" aria-label="Close" onClick={() => setModalOpen(false)}>&times;</button></div><form onSubmit={save}><div className="modal-body">
       {!editingUser && <div className="form-group"><label className="form-label" htmlFor="user-role">Assigned role</label><select className="form-select" id="user-role" name="role" value={newRole} onChange={(event) => { setNewRole(event.target.value); setNewGrade(''); setNewSection(''); setSelectedPupils([]) }} required><option value="teacher">Teacher</option><option value="coordinator">Reading Coordinator</option></select></div>}
       {editingUser && <div className="form-group"><label className="form-label" htmlFor="edit-user-role">Assigned role</label>{editingUser.status === 'inactive' ? <><select className="form-select" id="edit-user-role" name="role" value={editingUser.role} onChange={(event) => { setEditingUser((current) => ({ ...current, role: event.target.value })); setNewGrade(''); setNewSection(''); setSelectedPupils([]) }}><option value="teacher">Teacher</option><option value="coordinator">Reading Coordinator</option></select><div className="form-help">This account is inactive. Assign its role, save, then activate it.</div></> : <div className="user-edit-role"><span className={`badge-status ${editingUser.role === 'coordinator' ? 'badge-green' : 'badge-yellow'}`}>{editingUser.role === 'coordinator' ? 'Reading Coordinator' : 'Teacher'}</span><span>Role changes are available while an account is inactive.</span></div>}</div>}
-      <div className="form-group"><label className="form-label" htmlFor="user-full-name">Full name</label><input className="form-input" id="user-full-name" name="full_name" defaultValue={editingUser?.full_name || ''} autoComplete="name" required /></div>
+      <div className="user-name-fields"><div className="form-group"><label className="form-label" htmlFor="user-first-name">Name</label><input className="form-input" id="user-first-name" name="first_name" defaultValue={staffName.first_name} autoComplete="given-name" required /></div><div className="form-group"><label className="form-label" htmlFor="user-last-name">Last name</label><input className="form-input" id="user-last-name" name="last_name" defaultValue={staffName.last_name} autoComplete="family-name" required /></div><div className="form-group"><label className="form-label" htmlFor="user-middle-initial">Middle Initial</label><input className="form-input" id="user-middle-initial" name="middle_initial" defaultValue={staffName.middle_initial} maxLength="1" autoComplete="additional-name" /></div></div>
       <div className="form-group"><label className="form-label" htmlFor="user-email">Username or email</label><input className="form-input" id="user-email" name="email" type="email" defaultValue={editingUser?.email || ''} autoComplete="email" required /></div>
-      {activeRole === 'teacher' && <><div className="form-row"><div className="form-group"><label className="form-label" htmlFor="user-grade">Assigned grade</label><select className="form-select" id="user-grade" name="grade_level" value={editingUser ? editingUser.grade_level || '' : newGrade} onChange={(event) => { setNewGrade(event.target.value); if (editingUser) setEditingUser((current) => ({ ...current, grade_level: event.target.value })); setSelectedPupils([]) }} required><option value="">Select grade</option>{Array.from({ length: 6 }, (_, index) => `Grade ${index + 1}`).map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="user-section">Assigned section</label><input className="form-input" id="user-section" name="section" value={editingUser ? editingUser.section || '' : newSection} onChange={(event) => { setNewSection(event.target.value); if (editingUser) setEditingUser((current) => ({ ...current, section: event.target.value })); setSelectedPupils([]) }} required /></div></div>
+      {activeRole === 'teacher' && <><div className="form-row"><div className="form-group"><label className="form-label" htmlFor="user-grade">Assigned grade</label><select className="form-select" id="user-grade" name="grade_level" value={editingUser ? editingUser.grade_level || '' : newGrade} onChange={(event) => { setNewGrade(event.target.value); if (editingUser) setEditingUser((current) => ({ ...current, grade_level: event.target.value })); setSelectedPupils([]) }} required><option value="">Select grade</option>{Array.from({ length: 6 }, (_, index) => `Grade ${index + 1}`).map((grade) => <option key={grade}>{grade}</option>)}</select></div><div className="form-group"><label className="form-label" htmlFor="user-section">Assigned section</label><select className="form-select" id="user-section" name="section" value={newSection} onChange={(event) => { setNewSection(event.target.value); if (editingUser) setEditingUser((current) => ({ ...current, section: event.target.value })); setSelectedPupils([]) }} required><option value="">Select section</option>{['Alvarez', 'Aguinaldo', 'Calderon'].map((section) => <option key={section} value={section}>{section}</option>)}</select></div></div>
         <div className="form-group"><label className="form-label" htmlFor="user-pupils">Assigned pupils <span className="optional-label">Optional</span></label><select className="form-select user-pupil-multiselect" id="user-pupils" name="student_ids" multiple value={selectedPupils} onChange={(event) => setSelectedPupils(Array.from(event.target.selectedOptions, (option) => option.value))} disabled={!newGrade || !newSection}>{pupilChoices.map((student) => <option key={student.id} value={student.id}>{student.full_name} · {student.grade_level} · {student.section}{Number(student.teacher_id) === Number(editingUser?.id) ? ' (currently assigned)' : ''}</option>)}</select><div className="form-help">{!newGrade || !newSection ? 'Choose the assigned grade and section to see pupils.' : pupilChoices.length ? 'Select the pupils this teacher may access. Changing grade or section clears the selection.' : 'No unassigned pupils match this grade and section.'}</div></div></>}
       {activeRole === 'principal' && <div className="user-role-note"><span className="badge-status badge-blue">Principal</span><span>Principal accounts have school-wide access. Only one principal account is supported.</span></div>}
       {activeRole === 'coordinator' && <div className="user-role-note"><span className="badge-status badge-green">Reading Coordinator</span><span>Coordinator accounts can manage school personnel and access all coordinator tools.</span></div>}
