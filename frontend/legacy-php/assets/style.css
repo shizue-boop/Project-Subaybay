@@ -2405,3 +2405,46 @@ a {
     margin-top: 4px;
     display: block;
 }
+.reading-level-guide {
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.reading-level-guide .card-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.reading-level-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.reading-level-guide-item {
+    padding: 16px 18px;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid #94a3b8;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.reading-level-guide-item h3 {
+    margin: 0 0 7px;
+    color: var(--text-primary, #1e293b);
+    font-size: 14px;
+}
+
+.reading-level-guide-item p {
+    margin: 0;
+    color: var(--text-secondary, #64748b);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.reading-level-guide-item.guide-independent { border-left-color: #22c55e; }
+.reading-level-guide-item.guide-instructional { border-left-color: #f59e0b; }
+.reading-level-guide-item.guide-frustration { border-left-color: #ef4444; }
+
+@media (max-width: 760px) {
+    .reading-level-guide-grid { grid-template-columns: 1fr; }
+}

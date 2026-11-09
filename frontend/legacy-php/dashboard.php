@@ -221,6 +221,31 @@ include 'sidebar.php';
     </div>
 </div>
 
+<section class="card reading-level-guide" aria-labelledby="readingLevelGuideTitle">
+    <div class="card-header">
+        <div>
+            <div class="card-title" id="readingLevelGuideTitle">Reading Level Guide</div>
+            <div class="card-subtitle">What each saved reading level means</div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="reading-level-guide-grid">
+            <article class="reading-level-guide-item guide-independent">
+                <h3>Independent Level</h3>
+                <p>The pupil can read and understand the assessed material with little or no help.</p>
+            </article>
+            <article class="reading-level-guide-item guide-instructional">
+                <h3>Instructional Level</h3>
+                <p>The pupil can work with the assessed material with teacher guidance and practice.</p>
+            </article>
+            <article class="reading-level-guide-item guide-frustration">
+                <h3>Frustration Level</h3>
+                <p>The assessed material is currently too difficult for the pupil to read successfully without substantial support.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
 <!-- Pupils Needing Immediate Intervention -->
 <div class="card">
     <div class="card-header">

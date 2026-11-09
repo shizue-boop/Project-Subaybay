@@ -190,6 +190,17 @@
 .dashboard-chart-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; padding: 22px 0 0; color: #64748b; font-size: 12px; }
 .dashboard-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .dashboard-chart-legend i { width: 14px; height: 14px; border-radius: 50%; }
+.reading-level-guide { margin: 0 0 28px; overflow: hidden; border: 1px solid #e5eaf0; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+.reading-level-guide .card-header { padding: 18px 24px 12px; border-bottom: 1px solid #eef0f4; }
+.reading-level-guide .card-title { font-size: 17px; font-weight: 500; }
+.reading-level-guide .card-subtitle { font-size: 13px; }
+.reading-level-guide-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.reading-level-guide-item { padding: 16px 18px; border: 1px solid #e5eaf0; border-left: 4px solid #94a3b8; border-radius: 10px; background: #f8fafc; }
+.reading-level-guide-item h3 { margin: 0 0 7px; color: #1e293b; font-size: 14px; }
+.reading-level-guide-item p { margin: 0; color: #64748b; font-size: 13px; line-height: 1.55; }
+.guide-independent { border-left-color: #22c55e; }
+.guide-instructional { border-left-color: #f59e0b; }
+.guide-frustration { border-left-color: #ef4444; }
 .intervention-table-card { overflow: hidden; border: 1px solid #e5eaf0; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
 .intervention-table-card .card-header { padding: 22px 24px 12px; }
 .intervention-table-card .card-title { font-size: 17px; font-weight: 500; }
@@ -210,6 +221,7 @@
   .dashboard-page .stats-grid.dashboard-reading-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-secondary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .dashboard-charts { grid-template-columns: 1fr; }
+  .reading-level-guide-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .dashboard-page .stats-grid, .dashboard-secondary-stats { grid-template-columns: 1fr !important; }
