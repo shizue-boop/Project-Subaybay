@@ -173,11 +173,13 @@
 .dashboard-charts .card-header { min-height: 72px; padding: 22px 24px 12px; border-bottom: 1px solid #eef0f4; }
 .dashboard-charts .card-title { font-size: 17px; font-weight: 500; }
 .dashboard-charts .card-subtitle { font-size: 13px; }
-.dashboard-related-counts { display: grid; gap: 8px; margin-top: 2px; padding-top: 12px; border-top: 1px solid #e5eaf0; }
-.dashboard-related-heading { color: #64748b; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
-.dashboard-related-count { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: #475569; font-size: 12px; }
-.dashboard-related-count strong { flex: 0 0 auto; color: #0f172a; font-size: 15px; }
-.dashboard-related-count small { color: #64748b; font-size: 10px; font-weight: 400; }
+.dashboard-reading-count-chart { display: grid; gap: 15px; padding: 5px 0; }
+.dashboard-reading-count-row { display: grid; gap: 6px; min-width: 0; }
+.dashboard-reading-count-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: #334155; font-size: 13px; }
+.dashboard-reading-count-label strong { flex: 0 0 auto; color: #0f172a; font-size: 15px; }
+.dashboard-reading-count-label small { color: #64748b; font-size: 10px; font-weight: 400; }
+.dashboard-reading-count-track { height: 8px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+.dashboard-reading-count-track > span { display: block; height: 100%; border-radius: inherit; transition: width .2s ease; }
 .dashboard-donut-layout { display: grid; grid-template-columns: minmax(175px, 235px) minmax(180px, 1fr); align-items: center; gap: 24px; min-height: 280px; }
 .dashboard-donut { width: min(100%, 235px); justify-self: center; overflow: visible; }
 .dashboard-donut-legend { display: grid; gap: 18px; }
